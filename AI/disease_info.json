@@ -1,0 +1,224 @@
+{
+  "disclaimer": "This is not a medical diagnosis. Consult a doctor.",
+  "diseases": {
+    "Fungal infection": {
+      "precautions": [
+        "Keep the affected area clean and dry",
+        "Avoid sharing personal items like towels and combs",
+        "Wear breathable, loose-fitting clothing",
+        "Avoid swimming pools and public bathing areas",
+        "Change clothes and bedding regularly",
+        "Keep fingernails short and clean",
+        "Avoid scratching the affected area"
+      ],
+      "medicines": [
+        "Clotrimazole cream",
+        "Miconazole nitrate cream",
+        "Tolnaftate spray/powder",
+        "Terbinafine cream",
+        "Undecylenic acid powder",
+        "Butenafine hydrochloride cream"
+      ]
+    },
+    "Common Cold": {
+      "precautions": [
+        "Wash hands frequently with soap and water",
+        "Avoid touching face, eyes, and mouth",
+        "Cover mouth and nose when sneezing/coughing",
+        "Stay hydrated",
+        "Get adequate rest",
+        "Avoid crowded places when sick",
+        "Maintain good indoor air quality"
+      ],
+      "medicines": [
+        "Acetaminophen (Paracetamol)",
+        "Ibuprofen",
+        "Dextromethorphan (cough suppressant)",
+        "Guaifenesin (expectorant)",
+        "Pseudoephedrine (nasal decongestant)",
+        "Loratadine (antihistamine)",
+        "Vitamin C supplements"
+      ]
+    },
+    "Migraine": {
+      "precautions": [
+        "Identify and avoid migraine triggers",
+        "Maintain regular sleep schedule",
+        "Stay hydrated throughout the day",
+        "Manage stress through relaxation techniques",
+        "Eat regular, balanced meals",
+        "Reduce screen time before bed",
+        "Limit caffeine and alcohol intake"
+      ],
+      "medicines": [
+        "Ibuprofen",
+        "Aspirin",
+        "Acetaminophen",
+        "Naproxen sodium",
+        "Combination analgesics (aspirin + caffeine)",
+        "Diclofenac potassium",
+        "Sumatriptan (if available OTC)"
+      ]
+    },
+    "Allergy": {
+      "precautions": [
+        "Identify and avoid allergens",
+        "Keep windows and doors closed during high pollen season",
+        "Use air conditioning with clean filters",
+        "Wash clothes and hair after being outdoors",
+        "Keep pets out of bedrooms",
+        "Use hypoallergenic bedding",
+        "Avoid smoking and secondhand smoke"
+      ],
+      "medicines": [
+        "Cetirizine (Zyrtec)",
+        "Loratadine (Claritin)",
+        "Fexofenadine (Allegra)",
+        "Azelastine nasal spray",
+        "Cromolyn sodium nasal spray",
+        "Diphenhydramine",
+        "Pseudoephedrine"
+      ]
+    },
+    "Urinary tract infection": {
+      "precautions": [
+        "Drink plenty of water regularly",
+        "Urinate after sexual intercourse",
+        "Wipe from front to back",
+        "Avoid holding urine for long periods",
+        "Wear cotton underwear",
+        "Avoid douches and scented products",
+        "Maintain good personal hygiene"
+      ],
+      "medicines": [
+        "Phenazopyridine (pain reliever)",
+        "Ibuprofen",
+        "Acetaminophen",
+        "Cranberry extract supplements",
+        "D-mannose supplements",
+        "Uva ursi (bearberry) supplements",
+        "Probiotics with Lactobacillus"
+      ]
+    },
+    "Indigestion": {
+      "precautions": [
+        "Eat small, frequent meals",
+        "Chew food thoroughly",
+        "Avoid spicy and fatty foods",
+        "Limit caffeine and alcohol",
+        "Don't eat too close to bedtime",
+        "Maintain a healthy weight",
+        "Manage stress and anxiety"
+      ],
+      "medicines": [
+        "Calcium carbonate antacid",
+        "Magnesium hydroxide antacid",
+        "Aluminum hydroxide antacid",
+        "Sodium bicarbonate",
+        "Bismuth subsalicylate",
+        "Simethicone (anti-gas)",
+        "Famotidine (H2 blocker)"
+      ]
+    },
+    "Headache": {
+      "precautions": [
+        "Stay hydrated",
+        "Get adequate sleep",
+        "Take regular breaks from screen time",
+        "Practice good posture",
+        "Manage stress in healthy ways",
+        "Limit caffeine intake",
+        "Maintain consistent meal times"
+      ],
+      "medicines": [
+        "Ibuprofen",
+        "Acetaminophen",
+        "Naproxen",
+        "Aspirin",
+        "Caffeine + analgesic combinations",
+        "Diphenhydramine",
+        "Magnesium supplements"
+      ]
+    },
+    "Sore throat": {
+      "precautions": [
+        "Stay hydrated with warm fluids",
+        "Use a humidifier",
+        "Rest and avoid straining voice",
+        "Avoid smoke and pollutants",
+        "Wash hands frequently",
+        "Don't share eating utensils",
+        "Use saline gargles"
+      ],
+      "medicines": [
+        "Acetaminophen",
+        "Ibuprofen",
+        "Throat lozenges",
+        "Honey lozenges",
+        "Zinc lozenges",
+        "Saline throat spray",
+        "Benzocaine throat spray"
+      ]
+    },
+    "Acne": {
+      "precautions": [
+        "Wash face twice daily with mild cleanser",
+        "Avoid touching face with hands",
+        "Don't squeeze or pick at pimples",
+        "Use non-comedogenic products",
+        "Remove makeup before bed",
+        "Change pillowcases regularly",
+        "Manage diet and reduce sugar intake"
+      ],
+      "medicines": [
+        "Benzoyl peroxide cream/wash",
+        "Salicylic acid cleanser/toner",
+        "Adapalene gel (retinoid)",
+        "Azelaic acid cream",
+        "Sulfur-based products",
+        "Tea tree oil",
+        "Zinc supplements"
+      ]
+    },
+    "Constipation": {
+      "precautions": [
+        "Drink plenty of water daily",
+        "Increase fiber intake gradually",
+        "Exercise regularly",
+        "Don't ignore urge to defecate",
+        "Establish regular bathroom routine",
+        "Reduce stress",
+        "Avoid excessive dairy products"
+      ],
+      "medicines": [
+        "Psyllium husk (fiber supplement)",
+        "Methylcellulose",
+        "Mineral oil",
+        "Magnesium hydroxide (milk of magnesia)",
+        "Docusate sodium (stool softener)",
+        "Glycerin suppository",
+        "Senna leaf extract"
+      ]
+    },
+    "Diarrhea": {
+      "precautions": [
+        "Stay hydrated with oral rehydration solution",
+        "Avoid high-fiber foods initially",
+        "Eat bland, easy-to-digest foods",
+        "Wash hands frequently",
+        "Avoid dairy temporarily",
+        "Rest when possible",
+        "Don't share utensils or towels"
+      ],
+      "medicines": [
+        "Loperamide (Imodium)",
+        "Bismuth subsalicylate (Pepto-Bismol)",
+        "Probiotics",
+        "Oral rehydration salts",
+        "Activated charcoal",
+        "Psyllium husk",
+        "Ginger supplements"
+      ]
+    }
+  }
+}
