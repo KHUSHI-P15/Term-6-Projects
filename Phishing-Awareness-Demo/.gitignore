@@ -14,3 +14,8 @@ dist/
 *.swp
 *.swo
 *~
+frontend/node_modules/
+frontend/build/ 
+backend/node_modules/
+backend/dist/
+.env
