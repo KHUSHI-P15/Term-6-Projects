@@ -4,7 +4,7 @@ import './LoginPage.css';
 const LoginPage = ({ onSubmit }) => {
   const [formData, setFormData] = useState({
     session: 'Winter 2025',
-    exam: '',
+    exam: 'ba-sem-1-regular',
     enrollmentNo: '',
     password: '',
     captcha: '',
@@ -71,9 +71,9 @@ const LoginPage = ({ onSubmit }) => {
       <header className="gtu-header">
         {/* Top right links */}
         <div className="header-links">
-          <a href="#">Archive</a>
+          <a href="https://www.gturesults.in/Default.aspx?ext=archive" className="archive-link">Archive</a>
           <span>|</span>
-          <a href="#">Current <span className="current-label">[Winter 2025]</span></a>
+          <span className="current-text">Current <span className="current-label">[Winter 2025]</span></span>
         </div>
 
         {/* Logo and Title */}
@@ -92,36 +92,24 @@ const LoginPage = ({ onSubmit }) => {
           {/* Search Section */}
           <div className="gtu-search-section">
             <div className="section-header">
-              <span className="search-icon">🔍</span>
+              <img src="/search.png" alt="" className="section-icon-img" aria-hidden="true" />
               <h2>SEARCH :</h2>
             </div>
 
             <form onSubmit={handleSubmit} className="gtu-form">
-              {/* Session */}
-              <div className="form-row">
-                <div className="form-cell">
-                  <label>Session</label>
-                  <input
-                    type="text"
-                    name="session"
-                    value={formData.session}
-                    readOnly
-                    className="form-input"
-                  />
-                </div>
+              <div className="form-line">
+                <label className="form-label">Session</label>
+                <span className="form-value">{formData.session}</span>
               </div>
 
-              {/* Exam */}
-              <div className="form-row">
-                <div className="form-cell">
-                  <label>Exam</label>
-                  <select
-                    name="exam"
-                    value={formData.exam}
-                    onChange={handleInputChange}
-                    className="form-input"
-                  >
-                    <option value="">-- Select Exam --</option>
+              <div className="form-line">
+                <label className="form-label">Exam</label>
+                <select
+                  name="exam"
+                  value={formData.exam}
+                  onChange={handleInputChange}
+                  className="form-input exam-select"
+                >
                     
                     {/* BA */}
                     <optgroup label="BA">
@@ -257,60 +245,48 @@ const LoginPage = ({ onSubmit }) => {
                       <option value="pddc-sem-1-regular">PDDC SEM 1 - Regular (DEC 2025)</option>
                       <option value="pddc-sem-2-remedial">PDDC SEM 2 - Remedial (DEC 2025)</option>
                     </optgroup>
-                  </select>
-                </div>
+                </select>
               </div>
 
-              {/* Enroll No and Password in same row */}
-              <div className="form-row-2col">
-                <div className="form-cell">
-                  <label>Enroll No.</label>
-                  <input
-                    type="text"
-                    name="enrollmentNo"
-                    placeholder=""
-                    value={formData.enrollmentNo}
-                    onChange={handleInputChange}
-                    className="form-input"
-                  />
-                </div>
-                <div className="form-cell">
-                  <label>Password.</label>
-                  <input
-                    type="password"
-                    name="password"
-                    placeholder="Student Portal Password"
-                    value={formData.password}
-                    onChange={handleInputChange}
-                    className="form-input"
-                  />
-                </div>
+              <div className="form-line">
+                <label className="form-label">Enroll No.</label>
+                <input
+                  type="text"
+                  name="enrollmentNo"
+                  placeholder=""
+                  value={formData.enrollmentNo}
+                  onChange={handleInputChange}
+                  className="form-input text-input"
+                />
               </div>
 
-              {/* Code (CAPTCHA) */}
-              <div className="form-row-2col">
-                <div className="form-cell">
-                  <label>Code :</label>
-                  <div className="captcha-row">
-                    <div className="captcha-image">{captchaCode}</div>
-                    <button type="button" className="captcha-refresh" onClick={handleRefreshCaptcha}>⟳</button>
-                  </div>
-                </div>
-                <div className="form-cell">
-                  <input
-                    type="text"
-                    name="captcha"
-                    placeholder=""
-                    value={formData.captcha}
-                    onChange={handleInputChange}
-                    className="form-input"
-                  />
-                </div>
+              <div className="form-line">
+                <label className="form-label">PassWord.</label>
+                <input
+                  type="password"
+                  name="password"
+                  placeholder="Student Portal Password"
+                  value={formData.password}
+                  onChange={handleInputChange}
+                  className="form-input text-input"
+                />
               </div>
 
-              {/* Search Button */}
-              <div className="form-row">
-                <button type="submit" className="search-button" disabled={isLoading}>
+              <div className="code-line">
+                <label className="form-label">Code :</label>
+                <div className="captcha-image">{captchaCode}</div>
+                <button type="button" className="captcha-refresh" onClick={handleRefreshCaptcha} aria-label="Refresh captcha">
+                  <img src="/refresh_24.png" alt="Refresh" />
+                </button>
+                <input
+                  type="text"
+                  name="captcha"
+                  placeholder=""
+                  value={formData.captcha}
+                  onChange={handleInputChange}
+                  className="form-input captcha-input"
+                />
+                <button type="submit" className="search-button-inline" disabled={isLoading}>
                   {isLoading ? '...' : 'Search'}
                 </button>
               </div>
@@ -320,47 +296,48 @@ const LoginPage = ({ onSubmit }) => {
           {/* Search Result Section */}
           <div className="gtu-result-section">
             <div className="section-header">
-              <span className="result-icon">🔎</span>
+              <img
+                src="/Exlam-small.gif"
+                alt=""
+                className="section-icon-result-img"
+                aria-hidden="true"
+              />
               <h2>SEARCH RESULT:</h2>
             </div>
 
             <div className="result-box">
-              <div className="result-row">
-                <div className="result-col">
-                  <label>Name</label>
-                  <span>-----------</span>
-                </div>
-                <div className="result-col">
-                  <label>Declared On</label>
-                  <span>-----------</span>
+              <div className="result-line">
+                <div className="result-pair">
+                  <span className="result-label">Name</span>
+                  <span className="result-value">-----------</span>
                 </div>
               </div>
-              <div className="result-row">
-                <div className="result-col">
-                  <label>Enrollment No.</label>
-                  <span>-----------</span>
+              <div className="result-line">
+                <div className="result-pair">
+                  <span className="result-label">Enrollment No.</span>
+                  <span className="result-value">-----------</span>
                 </div>
               </div>
-              <div className="result-row">
-                <div className="result-col">
-                  <label>Exam Seat No.</label>
-                  <span>-----------</span>
+              <div className="result-line result-line-split">
+                <div className="result-pair">
+                  <span className="result-label">Exam Seat No.</span>
+                  <span className="result-value">-----------</span>
                 </div>
-                <div className="result-col">
-                  <label>&nbsp;</label>
-                  <span>&nbsp;</span>
-                </div>
-              </div>
-              <div className="result-row">
-                <div className="result-col">
-                  <label>Exam</label>
-                  <span>-----------</span>
+                <div className="result-pair">
+                  <span className="result-label">Declared On</span>
+                  <span className="result-value">-----------</span>
                 </div>
               </div>
-              <div className="result-row">
-                <div className="result-col">
-                  <label>Branch</label>
-                  <span>-----------</span>
+              <div className="result-line">
+                <div className="result-pair">
+                  <span className="result-label">Exam</span>
+                  <span className="result-value">-----------</span>
+                </div>
+              </div>
+              <div className="result-line">
+                <div className="result-pair">
+                  <span className="result-label">Branch</span>
+                  <span className="result-value">-----------</span>
                 </div>
               </div>
             </div>
@@ -370,7 +347,7 @@ const LoginPage = ({ onSubmit }) => {
         {/* Info Box */}
         <div className="gtu-info-box">
           <div className="info-content">
-            <p><strong>Enter search criteria and hit ?Search? button.</strong></p>
+            <p className="info-heading">Enter search criteria and hit ?Search? button.</p>
             <hr />
             <p className="info-note">
               This is a Computer generated provisional result, please consider the Hard-copy Gradesheet as final result.<br />
@@ -378,8 +355,8 @@ const LoginPage = ({ onSubmit }) => {
             </p>
             <hr />
             <p className="info-social">
-              GTU's Official Instagram Page: <a href="#">https://www.instagram.com/gtumedia7=nametag</a><br />
-              GTU's Official YouTube Channel: <a href="#">https://www.youtube.com/c/GujaratTechnologicalUniversity</a>
+              GTU's Official Instagram Page: <a href="https://www.instagram.com/gtumedia?r=nametag">https://www.instagram.com/gtumedia?r=nametag</a><br />
+              GTU's Official YouTube Channel: <a href="https://www.youtube.com/c/GujaratTechnologicalUniversity">https://www.youtube.com/c/GujaratTechnologicalUniversity</a>
             </p>
           </div>
         </div>

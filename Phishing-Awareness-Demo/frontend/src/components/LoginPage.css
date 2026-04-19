@@ -1,41 +1,39 @@
 .gtu-page {
-  font-family: Arial, sans-serif;
-  background-color: #ffffff;
+  font-family: 'Times New Roman', Times, serif;
+  width: 900px;
+  max-width: 900px;
+  margin: 0 auto;
   min-height: 100vh;
-  display: flex;
-  flex-direction: column;
+  background-color: #ffffff;
+  box-sizing: border-box;
+  padding: 0;
 }
 
-/* Header */
 .gtu-header {
-  background-color: #ffffff;
-  padding: 15px 80px;
-  border-bottom: 3px solid #cc0000;
+  padding: 10px 20px 0 20px;
 }
 
 .header-links {
   text-align: right;
-  margin-bottom: 8px;
-  font-size: 12px;
+  margin-bottom: 5px;
+  font-size: 11px;
 }
 
-.header-links a {
-  color: #003d82;
-  text-decoration: none;
-  margin: 0 5px;
-}
-
-.header-links a:hover {
+.archive-link {
+  color: #5f5f5f;
   text-decoration: underline;
 }
 
 .header-links span {
-  color: #333;
-  margin: 0 5px;
+  margin: 0 3px;
+}
+
+.current-text {
+  color: #111111;
 }
 
 .current-label {
-  color: #cc0000;
+  color: #c10000;
   font-weight: bold;
 }
 
@@ -43,12 +41,12 @@
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  gap: 20px;
-  margin-bottom: 8px;
+  gap: 8px;
+  margin-bottom: 4px;
 }
 
 .gtu-logo {
-  width: 90px;
+  width: 96px;
   height: auto;
   flex-shrink: 0;
 }
@@ -56,308 +54,343 @@
 .gtu-title {
   margin: 0;
   font-size: 26px;
+  line-height: 1.08;
   font-weight: bold;
-  color: #003d82;
+  color: #1b3fa7;
 }
 
 .gtu-separator {
   height: 3px;
-  background-color: #cc0000;
-  margin: 5px 0 0 0;
+  background-color: #e10000;
+  margin: 4px 0 0 0;
 }
 
-/* Main Content */
 .gtu-container {
-  flex: 1;
-  padding: 20px 80px;
-  background-color: #ffffff;
+  padding: 4px 20px 0 20px;
 }
 
 .gtu-content {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0;
-  margin-bottom: 15px;
-  background-color: #e8f0f7;
-  padding: 0;
-  border: 1px solid #999999;
+  display: flex;
+  margin-bottom: 6px;
+  background-color: #cfd6df;
+  border: 1px solid #9aa7b1;
+  box-shadow: inset 0 1px 0 #e2e7ee;
 }
 
-/* Search Section */
 .gtu-search-section {
-  border-right: 1px solid #999999;
-  padding: 12px 15px;
-  background-color: #e8f0f7;
+  width: 50%;
+  border-right: 1px solid #9aa7b1;
+  padding: 8px 7px;
+  background-color: #d7dee8;
+}
+
+.gtu-result-section {
+  width: 50%;
+  padding: 8px 9px;
+  background-color: #d7dee8;
 }
 
 .section-header {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 12px;
-  padding-bottom: 0;
+  gap: 4px;
+  margin-bottom: 8px;
 }
 
-.search-icon,
-.result-icon {
-  font-size: 14px;
+.section-icon-img {
+  width: 15px;
+  height: 15px;
+  display: block;
+}
+
+.section-icon-result-img {
+  height: 15px;
+  width: auto;
+  vertical-align: bottom;
 }
 
 .section-header h2 {
   margin: 0;
   font-size: 13px;
   font-weight: bold;
-  color: #000;
+  color: #000000;
 }
 
-/* Form Styling */
 .gtu-form {
-  display: contents;
+  display: block;
 }
 
-.form-row {
-  margin-bottom: 10px;
+.form-line {
+  margin-bottom: 5px;
   display: grid;
-  grid-template-columns: 1fr;
-  padding: 0;
+  grid-template-columns: 80px 1fr;
+  align-items: center;
 }
 
-.form-row-2col {
-  margin-bottom: 10px;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-  padding: 0;
+.form-label {
+  font-size: 11px;
+  font-weight: bold;
+  color: #000000;
 }
 
-.form-cell {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.form-cell label {
+.form-value {
   font-size: 12px;
-  font-weight: normal;
-  color: #000;
+  color: #111111;
 }
 
 .form-input {
-  padding: 5px 6px;
-  border: 1px solid #999;
+  border: 1px solid gray;
   font-size: 12px;
-  font-family: Arial, sans-serif;
+  font-family: 'Times New Roman', Times, serif;
   background-color: #ffffff;
   height: 22px;
   box-sizing: border-box;
+  padding: 1px 5px;
 }
 
 .form-input:focus {
-  outline: 1px solid #0066cc;
-  border-color: #0066cc;
+  outline: none;
+  border-color: #4e86b8;
 }
 
-/* CAPTCHA Row */
-.captcha-row {
+.exam-select {
+  width: 100%;
+}
+
+.text-input {
+  width: 180px;
+}
+
+.code-line {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   gap: 8px;
+  margin-top: 2px;
+}
+
+.code-line .form-label {
+  width: 80px;
+  flex-shrink: 0;
+  margin-bottom: 7px;
 }
 
 .captcha-image {
-  border: 2px solid #cc0000;
-  padding: 5px 10px;
+  width: 150px;
+  height: 28px;
+  border: 1px solid #f16066;
   background-color: #ffffff;
-  font-family: 'Courier New', monospace;
-  font-weight: bold;
-  font-size: 16px;
-  color: #333;
-  min-width: 95px;
-  text-align: center;
-  height: 24px;
   box-sizing: border-box;
   display: flex;
   align-items: center;
   justify-content: center;
+  font-family: Arial, sans-serif;
+  font-size: 27px;
+  font-style: normal;
+  letter-spacing: 3px;
+  color: #101010;
+  text-shadow: 0 0 0.2px #111111;
+  line-height: 1;
 }
 
 .captcha-refresh {
-  background-color: #ffffff;
-  border: 1px solid #999;
-  padding: 5px 10px;
+  border: 0;
+  background: transparent;
+  padding: 0;
   cursor: pointer;
-  font-size: 14px;
-  color: #0066cc;
-  font-weight: bold;
+  margin-bottom: 4px;
+}
+
+.captcha-refresh img {
+  width: 24px;
   height: 24px;
-  box-sizing: border-box;
+  display: block;
 }
 
-.captcha-refresh:hover {
-  background-color: #f5f5f5;
+.captcha-input {
+  width: 70px;
+  height: 28px;
+  margin-top: 5px;
 }
 
-/* Search Button */
-.search-button {
-  background-color: #0066cc;
-  color: white;
-  padding: 7px 28px;
-  border: 1px solid #0066cc;
-  font-size: 12px;
-  font-weight: bold;
+.search-button-inline {
+  border: 1px solid gray;
+  background-color: #1b8fd4;
+  color: #ffffff;
   cursor: pointer;
+  height: 24px;
+  width: auto;
+  padding: 5px 12px;
   border-radius: 0;
-  height: 30px;
+  font-size: 12px;
+  font-weight: normal;
+  font-family: 'Times New Roman', Times, serif;
+  margin-bottom: 1px;
+  line-height: 1;
 }
 
-.search-button:hover {
-  background-color: #0052a3;
+.search-button-inline:hover {
+  background-color: #117ec2;
 }
 
-.search-button:disabled {
-  background-color: #999;
+.search-button-inline:disabled {
+  background-color: #8e8e8e;
+  border-color: #7a7a7a;
   cursor: not-allowed;
-  border-color: #999;
-}
-
-/* Result Section */
-.gtu-result-section {
-  border-left: 1px solid #999999;
-  padding: 12px 15px;
-  background-color: #e8f0f7;
 }
 
 .result-box {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+  font-size: 12px;
+  color: #000000;
 }
 
-.result-row {
+.result-line {
+  margin-bottom: 10px;
+}
+
+.result-line:last-child {
+  margin-bottom: 0;
+}
+
+.result-line-split {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 15px;
-  padding-bottom: 5px;
-  border-bottom: 1px solid #ddd;
+  column-gap: 8px;
 }
 
-.result-row:last-child {
-  border-bottom: none;
-}
-
-.result-col {
+.result-pair {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
+  align-items: baseline;
 }
 
-.result-col label {
+.result-label {
+  width: 88px;
   font-size: 11px;
-  font-weight: normal;
-  color: #000;
+  font-weight: bold;
+  color: #000000;
 }
 
-.result-col span {
+.result-value {
   font-size: 12px;
-  color: #666;
+  color: #111111;
 }
 
-/* Info Box */
 .gtu-info-box {
-  background-color: #fffacd;
-  border: 1px solid #ffcc00;
-  border-radius: 0;
-  padding: 12px 15px;
-  margin: 0 80px;
+  background-color: #f7f1cf;
+  border: 1px solid orange;
+  padding: 8px 10px;
+  margin-top: 22px;
 }
 
 .info-content {
-  font-size: 12px;
-  line-height: 1.5;
-  color: #333;
+  font-size: 11px;
+  line-height: 1.25;
+  color: #333333;
   text-align: center;
 }
 
+.info-heading {
+  margin: 0 0 8px 0;
+  font-size: 14px;
+  color: #666666;
+  font-weight: normal;
+}
+
 .info-content p {
-  margin: 5px 0;
+  margin: 3px 0;
 }
 
 .info-content hr {
-  border: none;
-  border-top: 1px dotted #999;
-  margin: 6px 0;
-  opacity: 0.5;
+  border: 0;
+  border-top: 1px dashed #666666;
+  margin: 7px 0;
 }
 
 .info-note {
-  color: #800080 !important;
+  color: purple;
   font-size: 11px;
 }
 
 .info-social {
-  color: #0066cc;
+  color: gray;
   font-size: 11px;
-}
-
-/* Footer */
-.gtu-footer {
-  background-color: #ffffff;
-  border-top: 1px solid #ccc;
-  padding: 15px 80px;
-  text-align: center;
-  font-size: 12px;
-  color: #666;
-}
-
-.gtu-footer p {
-  margin: 0;
 }
 
 .info-social a {
-  color: #0066cc;
+  color: #2a73d9;
   text-decoration: underline;
 }
 
-/* Footer */
 .gtu-footer {
-  background-color: #f5f5f5;
-  color: #333;
-  text-align: center;
-  padding: 12px;
-  font-size: 11px;
-  border-top: 1px solid #ddd;
+  display: none;
 }
 
-.gtu-footer p {
-  margin: 0;
-}
-
-/* Responsive Design */
 @media (max-width: 768px) {
+  .gtu-page {
+    width: 100%;
+    max-width: 100%;
+    padding: 0 8px;
+    box-sizing: border-box;
+  }
+
+  .gtu-header,
+  .gtu-container {
+    padding-left: 0;
+    padding-right: 0;
+  }
+
   .gtu-header-top {
     flex-direction: column;
     align-items: flex-start;
+    gap: 5px;
+  }
+
+  .gtu-title {
+    font-size: 22px;
   }
 
   .gtu-content {
-    grid-template-columns: 1fr;
+    flex-direction: column;
   }
 
   .gtu-search-section {
-    border-right: none;
-    border-bottom: 1px solid #999999;
+    width: 100%;
+    border-right: 0;
+    border-bottom: 1px solid #9aa7b1;
+    box-sizing: border-box;
   }
 
   .gtu-result-section {
-    border-left: none;
+    width: 100%;
+    box-sizing: border-box;
   }
 
-  .form-row-2col {
-    grid-template-columns: 1fr;
+  .form-line {
+    grid-template-columns: 74px 1fr;
   }
 
-  .result-row {
+  .text-input,
+  .exam-select {
+    width: 100%;
+  }
+
+  .code-line {
+    flex-wrap: wrap;
+  }
+
+  .code-line .form-label {
+    width: 100%;
+    margin-bottom: 0;
+  }
+
+  .result-line-split {
     grid-template-columns: 1fr;
+    row-gap: 8px;
+  }
+}
+
+@media (max-width: 480px) {
+  .gtu-header {
+    padding-top: 6px;
   }
 
   .gtu-title {
@@ -365,38 +398,11 @@
   }
 
   .gtu-logo {
-    width: 70px;
-  }
-}
-
-@media (max-width: 480px) {
-  .gtu-header {
-    padding: 10px 15px;
+    width: 80px;
   }
 
-  .gtu-container {
-    padding: 10px 15px;
-  }
-
-  .gtu-search-section,
-  .gtu-result-section {
-    padding: 10px;
-  }
-
-  .gtu-title {
-    font-size: 14px;
-  }
-
-  .section-header h2 {
-    font-size: 11px;
-  }
-
-  .form-input,
   .captcha-image {
-    font-size: 11px;
-  }
-
-  .search-button {
-    width: 100%;
+    width: 130px;
+    font-size: 28px;
   }
 }
