@@ -1,11 +1,55 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import axios from 'axios';
-import { FaSearch, FaMicrophone, FaTrash, FaCheckCircle, FaCapsules, FaShieldAlt } from 'react-icons/fa';
+import {
+  FaSearch,
+  FaMicrophone,
+  FaTrash,
+  FaCheckCircle,
+  FaCapsules,
+  FaShieldAlt,
+  FaSun,
+  FaMoon
+} from 'react-icons/fa';
 import { MdLocalHospital, MdTrendingUp, MdOutlineWarning } from 'react-icons/md';
 import { BiLoaderCircle } from 'react-icons/bi';
 import './App.css';
 
 const API_URL = 'http://localhost:5000';
+
+const normalizeForMatch = (value) => (
+  value
+    .toLowerCase()
+    .replace(/[_-]/g, ' ')
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+);
+
+const cleanTranscript = (value) => value.replace(/\s+/g, ' ').trim();
+
+const splitSpokenSymptoms = (value) => (
+  value
+    .split(/,|;|\/|\band\b|\bplus\b|\bwith\b/gi)
+    .map((chunk) => chunk.trim())
+    .filter(Boolean)
+);
+
+const getInitialTheme = () => {
+  if (typeof window === 'undefined') {
+    return 'dark';
+  }
+
+  const storedTheme = window.localStorage.getItem('theme');
+  if (storedTheme === 'dark' || storedTheme === 'light') {
+    return storedTheme;
+  }
+
+  if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+    return 'dark';
+  }
+
+  return 'light';
+};
 
 function App() {
   const [symptoms, setSymptoms] = useState([]);
@@ -16,10 +60,66 @@ function App() {
   const [isListening, setIsListening] = useState(false);
   const [symptomInput, setSymptomInput] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [voiceNote, setVoiceNote] = useState('');
+  const [theme, setTheme] = useState(getInitialTheme);
+  const recognitionRef = useRef(null);
+  const voiceTimeoutRef = useRef(null);
+  const isDark = theme === 'dark';
+  const themeClasses = {
+    headerBg: isDark ? 'bg-slate-950' : 'bg-white/80',
+    headerBorder: isDark ? 'border-slate-700' : 'border-slate-200',
+    headerTitle: isDark ? 'text-white' : 'text-slate-900',
+    headerSubtitle: isDark ? 'text-slate-400' : 'text-slate-600',
+    cardBg: isDark ? 'bg-slate-800' : 'bg-white',
+    cardBorder: isDark ? 'border-slate-700' : 'border-slate-200',
+    cardShadow: isDark ? 'shadow-2xl' : 'shadow-xl',
+    labelText: isDark ? 'text-slate-300' : 'text-slate-700',
+    inputBg: isDark ? 'bg-slate-700' : 'bg-slate-50',
+    inputBorder: isDark ? 'border-slate-600' : 'border-slate-200',
+    inputText: isDark ? 'text-white' : 'text-slate-900',
+    inputPlaceholder: isDark ? 'placeholder-slate-400' : 'placeholder-slate-500',
+    dropdownBg: isDark ? 'bg-slate-700' : 'bg-white',
+    dropdownBorder: isDark ? 'border-slate-600' : 'border-slate-200',
+    dropdownItem: isDark
+      ? 'text-slate-200 hover:bg-slate-600 border-slate-600'
+      : 'text-slate-700 hover:bg-slate-100 border-slate-200',
+    selectBg: isDark ? 'bg-slate-700 text-white' : 'bg-white text-slate-900',
+    selectBorder: isDark ? 'border-slate-600' : 'border-slate-200',
+    chip: isDark
+      ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white'
+      : 'bg-blue-50 text-blue-700 border border-blue-200',
+    errorBg: isDark ? 'bg-red-900 border-red-700' : 'bg-red-50 border-red-200',
+    errorText: isDark ? 'text-red-200' : 'text-red-700',
+    emptyBg: isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200',
+    emptyText: isDark ? 'text-slate-400' : 'text-slate-600',
+    footerBg: isDark ? 'bg-slate-950 border-slate-700' : 'bg-white border-slate-200',
+    footerText: isDark ? 'text-slate-400' : 'text-slate-500',
+    voiceNote: isDark ? 'text-slate-400' : 'text-slate-600',
+    clearButton: isDark
+      ? 'bg-slate-700 hover:bg-slate-600 text-white'
+      : 'bg-slate-200 hover:bg-slate-300 text-slate-800'
+  };
 
   // Initialize: Fetch available symptoms on component mount
   useEffect(() => {
     fetchAvailableSymptoms();
+  }, []);
+
+  useEffect(() => {
+    document.body.classList.remove('theme-light', 'theme-dark');
+    document.body.classList.add(`theme-${theme}`);
+    window.localStorage.setItem('theme', theme);
+  }, [theme]);
+
+  useEffect(() => () => {
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
+      recognitionRef.current = null;
+    }
+    if (voiceTimeoutRef.current) {
+      clearTimeout(voiceTimeoutRef.current);
+      voiceTimeoutRef.current = null;
+    }
   }, []);
 
   // Fetch available symptoms from backend
@@ -49,6 +149,60 @@ function App() {
     setSymptoms(symptoms.filter(s => s !== symptomToRemove));
   };
 
+  const symptomMatchers = useMemo(
+    () => availableSymptoms.map((symptom) => ({
+      value: symptom,
+      norm: normalizeForMatch(symptom)
+    })),
+    [availableSymptoms]
+  );
+
+  const matchSpokenSymptoms = (transcript) => {
+    const chunks = splitSpokenSymptoms(transcript);
+    if (chunks.length === 0 || symptomMatchers.length === 0) {
+      return { matched: [], unmatched: chunks };
+    }
+
+    const matched = [];
+    const unmatched = [];
+
+    chunks.forEach((chunk) => {
+      const normalizedChunk = normalizeForMatch(chunk);
+      if (!normalizedChunk) {
+        return;
+      }
+
+      let match = symptomMatchers.find((symptom) => symptom.norm === normalizedChunk);
+      if (!match) {
+        match = symptomMatchers.find((symptom) => (
+          symptom.norm.includes(normalizedChunk) || normalizedChunk.includes(symptom.norm)
+        ));
+      }
+
+      if (match) {
+        matched.push(match.value);
+      } else {
+        unmatched.push(chunk);
+      }
+    });
+
+    return {
+      matched: Array.from(new Set(matched)),
+      unmatched
+    };
+  };
+
+  const stopVoiceInput = () => {
+    if (voiceTimeoutRef.current) {
+      clearTimeout(voiceTimeoutRef.current);
+      voiceTimeoutRef.current = null;
+    }
+
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
+    }
+  };
+
   // Voice input using Web Speech API
   const startVoiceInput = () => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -58,9 +212,20 @@ function App() {
       return;
     }
 
+    if (isListening) {
+      stopVoiceInput();
+      return;
+    }
+
+    setVoiceNote('');
+    setError(null);
+
     const recognition = new SpeechRecognition();
-    recognition.continuous = true;
+    recognition.continuous = false;
     recognition.interimResults = true;
+    recognition.lang = 'en-US';
+    recognition.maxAlternatives = 1;
+    recognitionRef.current = recognition;
 
     recognition.onstart = () => {
       setIsListening(true);
@@ -68,11 +233,49 @@ function App() {
     };
 
     recognition.onresult = (event) => {
-      let transcript = '';
+      let interimTranscript = '';
+      let finalTranscript = '';
+
       for (let i = event.resultIndex; i < event.results.length; i++) {
-        transcript += event.results[i][0].transcript;
+        const chunk = event.results[i][0].transcript;
+        if (event.results[i].isFinal) {
+          finalTranscript += chunk;
+        } else {
+          interimTranscript += chunk;
+        }
       }
-      setSymptomInput(transcript.toLowerCase());
+
+      if (interimTranscript) {
+        setSymptomInput(cleanTranscript(interimTranscript));
+        setShowSuggestions(true);
+      }
+
+      if (finalTranscript) {
+        const cleanedFinal = cleanTranscript(finalTranscript);
+        const { matched, unmatched } = matchSpokenSymptoms(cleanedFinal);
+
+        if (matched.length > 0) {
+          setSymptoms((prev) => {
+            const merged = new Set(prev);
+            matched.forEach((symptom) => merged.add(symptom));
+            return Array.from(merged);
+          });
+          setSymptomInput('');
+          setShowSuggestions(false);
+        } else {
+          setSymptomInput(cleanedFinal);
+          setShowSuggestions(true);
+        }
+
+        const noteParts = [`Heard: "${cleanedFinal}"`];
+        if (matched.length > 0) {
+          noteParts.push(`Added: ${matched.join(', ')}`);
+        }
+        if (unmatched.length > 0) {
+          noteParts.push(`Not matched: ${unmatched.join(', ')}`);
+        }
+        setVoiceNote(noteParts.join(' | '));
+      }
     };
 
     recognition.onerror = (event) => {
@@ -81,14 +284,15 @@ function App() {
 
     recognition.onend = () => {
       setIsListening(false);
+      recognitionRef.current = null;
     };
 
     recognition.start();
 
-    // Stop after 5 seconds
-    setTimeout(() => {
+    // Stop after 8 seconds to keep the session short.
+    voiceTimeoutRef.current = setTimeout(() => {
       recognition.stop();
-    }, 5000);
+    }, 8000);
   };
 
   // Make prediction API call
@@ -126,47 +330,78 @@ function App() {
     setPrediction(null);
     setError(null);
     setSymptomInput('');
+    setVoiceNote('');
   };
 
+  const normalizedInput = normalizeForMatch(symptomInput);
   const filteredSuggestions = availableSymptoms
-    .filter(s => 
-      s.toLowerCase().includes(symptomInput.toLowerCase()) &&
-      !symptoms.includes(s)
-    )
+    .filter((symptom) => (
+      normalizedInput &&
+      normalizeForMatch(symptom).includes(normalizedInput) &&
+      !symptoms.includes(symptom)
+    ))
     .slice(0, 8);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+    <div
+      className={`min-h-screen ${
+        isDark
+          ? 'bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900'
+          : 'bg-gradient-to-br from-slate-50 via-slate-100 to-slate-200'
+      }`}
+    >
       {/* Header */}
-      <header className="bg-slate-950 border-b border-slate-700 sticky top-0 z-50 backdrop-blur">
+      <header className={`${themeClasses.headerBg} border-b ${themeClasses.headerBorder} sticky top-0 z-50 backdrop-blur`}>
         <div className="max-w-5xl mx-auto px-4 md:px-6 py-6">
-          <div className="flex items-center gap-3 mb-2">
-            <MdLocalHospital className="text-blue-500 text-3xl" />
-            <h1 className="text-3xl md:text-4xl font-bold text-white">
-              Medical Diagnosis System
-            </h1>
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div>
+              <div className="flex items-center gap-3 mb-2">
+                <MdLocalHospital className="text-blue-500 text-3xl" />
+                <h1 className={`text-3xl md:text-4xl font-bold ${themeClasses.headerTitle}`}>
+                  Medical Diagnosis System
+                </h1>
+              </div>
+              <p className={`text-sm md:text-base ${themeClasses.headerSubtitle}`}>
+                AI-powered disease prediction based on your symptoms
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setTheme(isDark ? 'light' : 'dark')}
+              className={`theme-toggle flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold border transition-colors ${
+                isDark
+                  ? 'bg-slate-800 text-slate-100 border-slate-700 hover:bg-slate-700'
+                  : 'bg-white text-slate-800 border-slate-200 hover:bg-slate-100'
+              }`}
+              aria-pressed={isDark}
+              aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+            >
+              {isDark ? (
+                <FaSun className="text-amber-300" />
+              ) : (
+                <FaMoon className="text-slate-700" />
+              )}
+              <span>{isDark ? 'Light Mode' : 'Dark Mode'}</span>
+            </button>
           </div>
-          <p className="text-slate-400 text-sm md:text-base">
-            AI-powered disease prediction based on your symptoms
-          </p>
         </div>
       </header>
 
       {/* Main Content */}
       <main className="max-w-5xl mx-auto px-4 md:px-6 py-8">
         {/* Input Section */}
-        <div className="bg-slate-800 rounded-xl shadow-2xl border border-slate-700 p-8 mb-8">
+        <div className={`${themeClasses.cardBg} rounded-xl ${themeClasses.cardShadow} border ${themeClasses.cardBorder} p-8 mb-8`}>
           <div className="mb-8">
             <div className="flex items-center gap-2 mb-4">
               <FaSearch className="text-blue-400 text-lg" />
-              <h2 className="text-2xl font-bold text-white">
+              <h2 className={`text-2xl font-bold ${themeClasses.headerTitle}`}>
                 Select Your Symptoms
               </h2>
             </div>
 
             {/* Symptom Input */}
             <div className="mb-6">
-              <label className="block text-slate-300 font-semibold mb-3 text-sm">
+              <label className={`block font-semibold mb-3 text-sm ${themeClasses.labelText}`}>
                 Search symptoms (start typing or paste)
               </label>
               <div className="relative">
@@ -179,12 +414,14 @@ function App() {
                     setShowSuggestions(true);
                   }}
                   onFocus={() => setShowSuggestions(true)}
-                  className="w-full px-4 py-3 bg-slate-700 border border-slate-600 text-white placeholder-slate-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
+                    themeClasses.inputBg
+                  } ${themeClasses.inputBorder} ${themeClasses.inputText} ${themeClasses.inputPlaceholder}`}
                 />
                 
                 {/* Suggestions Dropdown */}
                 {showSuggestions && symptomInput && filteredSuggestions.length > 0 && (
-                  <div className="absolute top-full left-0 right-0 bg-slate-700 border border-slate-600 rounded-lg mt-2 shadow-xl z-20 max-h-48 overflow-y-auto">
+                  <div className={`absolute top-full left-0 right-0 ${themeClasses.dropdownBg} border ${themeClasses.dropdownBorder} rounded-lg mt-2 shadow-xl z-20 max-h-48 overflow-y-auto`}>
                     {filteredSuggestions.map((symptom) => (
                       <button
                         key={symptom}
@@ -193,11 +430,17 @@ function App() {
                           setSymptomInput('');
                           setShowSuggestions(false);
                         }}
-                        className="w-full text-left px-4 py-3 text-slate-200 hover:bg-slate-600 transition-colors border-b border-slate-600 last:border-b-0"
+                        className={`w-full text-left px-4 py-3 transition-colors border-b last:border-b-0 ${themeClasses.dropdownItem}`}
                       >
                         {symptom}
                       </button>
                     ))}
+                  </div>
+                )}
+
+                {voiceNote && (
+                  <div className={`mt-2 text-xs md:text-sm ${themeClasses.voiceNote}`}>
+                    <span className="font-semibold">Voice:</span> {voiceNote}
                   </div>
                 )}
               </div>
@@ -208,14 +451,16 @@ function App() {
               <select
                 onChange={handleSymptomChange}
                 value=""
-                className="w-full px-4 py-3 bg-slate-700 border border-slate-600 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all cursor-pointer"
+                className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all cursor-pointer ${themeClasses.selectBg} ${themeClasses.selectBorder}`}
               >
-                <option value="" className="bg-slate-700">Or select from dropdown list...</option>
+                <option value="" className={isDark ? 'bg-slate-700' : 'bg-white'}>
+                  Or select from dropdown list...
+                </option>
                 {availableSymptoms
                   .filter(s => !symptoms.includes(s))
                   .slice(0, 15)
                   .map((symptom) => (
-                    <option key={symptom} value={symptom} className="bg-slate-700">
+                    <option key={symptom} value={symptom} className={isDark ? 'bg-slate-700' : 'bg-white'}>
                       {symptom}
                     </option>
                   ))}
@@ -227,7 +472,7 @@ function App() {
               <div className="mb-6">
                 <div className="flex items-center gap-2 mb-3">
                   <FaCheckCircle className="text-green-400 text-lg" />
-                  <label className="text-slate-300 font-semibold">
+                  <label className={`font-semibold ${themeClasses.labelText}`}>
                     Selected Symptoms ({symptoms.length})
                   </label>
                 </div>
@@ -235,12 +480,14 @@ function App() {
                   {symptoms.map((symptom) => (
                     <div
                       key={symptom}
-                      className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-4 py-2 rounded-full flex items-center gap-2 shadow-lg hover:shadow-xl transition-shadow"
+                      className={`${themeClasses.chip} px-4 py-2 rounded-full flex items-center gap-2 shadow-lg hover:shadow-xl transition-shadow`}
                     >
                       <span className="text-sm font-medium">{symptom}</span>
                       <button
                         onClick={() => removeSymptom(symptom)}
-                        className="hover:bg-blue-500 rounded-full w-5 h-5 flex items-center justify-center transition-colors ml-1"
+                        className={`rounded-full w-5 h-5 flex items-center justify-center transition-colors ml-1 ${
+                          isDark ? 'hover:bg-blue-500' : 'hover:bg-blue-100'
+                        }`}
                       >
                         ×
                       </button>
@@ -252,9 +499,9 @@ function App() {
 
             {/* Error Alert */}
             {error && (
-              <div className="bg-red-900 border border-red-700 rounded-lg p-4 mb-4 flex gap-3">
+              <div className={`${themeClasses.errorBg} border rounded-lg p-4 mb-4 flex gap-3`}>
                 <MdOutlineWarning className="text-red-400 text-xl flex-shrink-0 mt-0.5" />
-                <p className="text-red-200 text-sm">{error}</p>
+                <p className={`${themeClasses.errorText} text-sm`}>{error}</p>
               </div>
             )}
           </div>
@@ -285,12 +532,12 @@ function App() {
               className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 disabled:from-gray-500 disabled:to-gray-600 text-white font-bold py-3 px-6 rounded-lg transition-all duration-200 flex items-center justify-center gap-2 disabled:cursor-not-allowed shadow-lg hover:shadow-xl"
             >
               <FaMicrophone className={isListening ? 'animate-pulse text-xl' : 'text-lg'} />
-              <span>{isListening ? 'Listening...' : 'Voice Input'}</span>
+              <span>{isListening ? 'Stop Listening' : 'Voice Input'}</span>
             </button>
 
             <button
               onClick={handleClear}
-              className="bg-slate-700 hover:bg-slate-600 text-white font-bold py-3 px-6 rounded-lg transition-all duration-200 flex items-center justify-center gap-2 shadow-lg hover:shadow-xl"
+              className={`${themeClasses.clearButton} font-bold py-3 px-6 rounded-lg transition-all duration-200 flex items-center justify-center gap-2 shadow-lg hover:shadow-xl`}
             >
               <FaTrash className="text-lg" />
               <span>Clear</span>
@@ -430,9 +677,9 @@ function App() {
 
         {/* Empty State */}
         {!prediction && !loading && symptoms.length === 0 && (
-          <div className="bg-slate-800 rounded-xl border border-slate-700 p-12 text-center">
-            <MdLocalHospital className="text-slate-600 text-6xl mx-auto mb-4" />
-            <p className="text-slate-400 text-lg">
+          <div className={`${themeClasses.emptyBg} rounded-xl border p-12 text-center`}>
+            <MdLocalHospital className="text-slate-400 text-6xl mx-auto mb-4" />
+            <p className={`${themeClasses.emptyText} text-lg`}>
               Select your symptoms and click "Predict Disease" to get started
             </p>
           </div>
@@ -440,8 +687,8 @@ function App() {
       </main>
 
       {/* Footer */}
-      <footer className="bg-slate-950 border-t border-slate-700 mt-12">
-        <div className="max-w-5xl mx-auto px-4 md:px-6 py-6 text-center text-slate-400 text-sm">
+      <footer className={`${themeClasses.footerBg} border-t mt-12`}>
+        <div className={`max-w-5xl mx-auto px-4 md:px-6 py-6 text-center ${themeClasses.footerText} text-sm`}>
           <p>Built with React and AI for better health awareness</p>
         </div>
       </footer>

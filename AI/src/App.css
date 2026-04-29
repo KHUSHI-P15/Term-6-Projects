@@ -130,10 +130,15 @@ select {
   transition: all 0.2s ease-in-out;
 }
 
-/* Dark Mode Specific */
-body {
+/* Theme Base */
+body.theme-dark {
   background-color: #0f172a;
   color: #e2e8f0;
+}
+
+body.theme-light {
+  background-color: #f8fafc;
+  color: #0f172a;
 }
 
 /* Card Hover Effects */
