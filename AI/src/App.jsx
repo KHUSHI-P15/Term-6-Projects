@@ -15,6 +15,7 @@ import { BiLoaderCircle } from 'react-icons/bi';
 import './App.css';
 
 const API_URL = 'http://localhost:5000';
+const LOW_CONFIDENCE_THRESHOLD = 40;
 
 const normalizeForMatch = (value) => (
   value
@@ -666,6 +667,9 @@ function App() {
           <div className="space-y-6 animate-fadeIn">
             {(() => {
               const wikiUrl = getWikipediaUrl(prediction.prediction.disease);
+              const topPredictions = Array.isArray(prediction.top_predictions)
+                ? prediction.top_predictions
+                : [];
               return (
                 <>
             {/* Disclaimer */}
@@ -673,6 +677,15 @@ function App() {
               <MdOutlineWarning className="text-amber-400 text-2xl flex-shrink-0" />
               <p className="text-amber-100 font-medium">{prediction.disclaimer}</p>
             </div>
+
+            {prediction.prediction.confidence_percentage < LOW_CONFIDENCE_THRESHOLD && (
+              <div className="bg-orange-900 border-l-4 border-orange-500 rounded-lg p-4 flex gap-3">
+                <MdOutlineWarning className="text-orange-400 text-2xl flex-shrink-0" />
+                <p className="text-orange-100 font-medium">
+                  Low confidence result. Add more specific symptoms to improve the prediction.
+                </p>
+              </div>
+            )}
 
             {/* Main Results Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -749,6 +762,47 @@ function App() {
                 </div>
               </div>
             </div>
+
+            {topPredictions.length > 0 && (
+              <div className="bg-slate-900/60 border border-slate-700 rounded-lg p-6">
+                <h4 className="text-slate-200 font-semibold text-sm uppercase tracking-wide mb-4">
+                  Top Predictions
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {topPredictions.slice(0, 3).map((item) => {
+                    const url = getWikipediaUrl(item.disease);
+                    const confidencePct = typeof item.confidence_percentage === 'number'
+                      ? item.confidence_percentage
+                      : (item.confidence || 0) * 100;
+                    return (
+                      <div
+                        key={item.disease}
+                        className="bg-slate-800/80 border border-slate-700 rounded-lg p-4"
+                      >
+                        <p className="text-slate-300 text-xs uppercase tracking-wide mb-2">Disease</p>
+                        <p className="text-white font-semibold text-base mb-2">
+                          {url ? (
+                            <a
+                              href={url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="underline decoration-dotted underline-offset-4 hover:decoration-solid"
+                            >
+                              {item.disease}
+                            </a>
+                          ) : (
+                            item.disease
+                          )}
+                        </p>
+                        <div className="text-slate-300 text-sm">
+                          {confidencePct.toFixed(1)}%
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
                 </>
               );
             })()}

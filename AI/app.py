@@ -201,6 +201,15 @@ def format_prediction_response(prediction_result, disease_name):
     """
     disease_info = get_disease_info(disease_name)
     
+    top_predictions = []
+    for item in prediction_result.get('top_predictions', []):
+        confidence = float(item.get('confidence', 0.0))
+        top_predictions.append({
+            'disease': item.get('disease'),
+            'confidence': confidence,
+            'confidence_percentage': round(confidence * 100, 2)
+        })
+
     return {
         'success': True,
         'prediction': {
@@ -208,6 +217,7 @@ def format_prediction_response(prediction_result, disease_name):
             'confidence': prediction_result['confidence'],
             'confidence_percentage': round(prediction_result['confidence'] * 100, 2)
         },
+        'top_predictions': top_predictions,
         'recommendations': {
             'precautions': disease_info.get('precautions', []),
             'medicines': disease_info.get('medicines', [])

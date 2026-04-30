@@ -76,7 +76,7 @@ def _normalize_symptom(symptom):
     return normalized
 
 
-def predict_disease(symptoms):
+def predict_disease(symptoms, top_n=3):
     """
     Predict disease and confidence score based on provided symptoms.
     
@@ -130,18 +130,35 @@ def predict_disease(symptoms):
     predicted_label = model.predict(feature_vector)[0]
     predicted_disease = label_encoder.inverse_transform([predicted_label])[0]
     
-    # Calculate confidence score
-    # For tree-based models, we use the prediction probabilities
+    # Calculate confidence score and top predictions
+    top_predictions = []
     try:
         probabilities = model.predict_proba(feature_vector)[0]
         confidence = float(np.max(probabilities))
+        top_n = max(1, min(top_n, len(probabilities)))
+        top_indices = np.argsort(probabilities)[::-1][:top_n]
+        top_diseases = label_encoder.inverse_transform(top_indices)
+        top_predictions = [
+            {
+                'disease': disease,
+                'confidence': round(float(probabilities[idx]), 4)
+            }
+            for idx, disease in zip(top_indices, top_diseases)
+        ]
     except AttributeError:
         # Fallback if model doesn't support predict_proba
         confidence = 0.0
+        top_predictions = [
+            {
+                'disease': predicted_disease,
+                'confidence': round(confidence, 4)
+            }
+        ]
     
     result = {
         'disease': predicted_disease,
         'confidence': round(confidence, 4),
+        'top_predictions': top_predictions,
         'known_symptoms': len(normalized_symptoms) - len(unknown_symptoms),
         'unknown_symptoms': unknown_symptoms,
         'total_symptoms_provided': len(normalized_symptoms)
