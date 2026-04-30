@@ -34,6 +34,20 @@ const splitSpokenSymptoms = (value) => (
     .filter(Boolean)
 );
 
+const getWikipediaUrl = (diseaseName) => {
+  if (!diseaseName) {
+    return null;
+  }
+
+  const overrides = {
+    GERD: 'Gastroesophageal_reflux_disease'
+  };
+
+  const title = overrides[diseaseName] || diseaseName;
+  const slug = title.replace(/\s+/g, '_');
+  return `https://en.wikipedia.org/wiki/${encodeURIComponent(slug)}`;
+};
+
 const getVoiceErrorMessage = (error) => {
   switch (error) {
     case 'network':
@@ -70,6 +84,8 @@ const getInitialTheme = () => {
 function App() {
   const [symptoms, setSymptoms] = useState([]);
   const [availableSymptoms, setAvailableSymptoms] = useState([]);
+  const [suggestedSymptoms, setSuggestedSymptoms] = useState([]);
+  const [suggestionsLoading, setSuggestionsLoading] = useState(false);
   const [prediction, setPrediction] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -104,6 +120,9 @@ function App() {
     chip: isDark
       ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white'
       : 'bg-blue-50 text-blue-700 border border-blue-200',
+    suggestionChip: isDark
+      ? 'bg-slate-700/80 text-slate-100 border border-dashed border-slate-500 hover:border-blue-400'
+      : 'bg-slate-50 text-slate-700 border border-dashed border-slate-300 hover:border-blue-500',
     errorBg: isDark ? 'bg-red-900 border-red-700' : 'bg-red-50 border-red-200',
     errorText: isDark ? 'text-red-200' : 'text-red-700',
     emptyBg: isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200',
@@ -126,6 +145,44 @@ function App() {
     document.body.classList.add(`theme-${theme}`);
     window.localStorage.setItem('theme', theme);
   }, [theme]);
+
+  useEffect(() => {
+    if (symptoms.length === 0) {
+      setSuggestedSymptoms([]);
+      setSuggestionsLoading(false);
+      return;
+    }
+
+    let isActive = true;
+    setSuggestionsLoading(true);
+
+    axios.post(`${API_URL}/suggestions`, { symptoms })
+      .then((response) => {
+        if (!isActive) {
+          return;
+        }
+
+        if (response.data.success) {
+          setSuggestedSymptoms(response.data.suggestions || []);
+        } else {
+          setSuggestedSymptoms([]);
+        }
+      })
+      .catch(() => {
+        if (isActive) {
+          setSuggestedSymptoms([]);
+        }
+      })
+      .finally(() => {
+        if (isActive) {
+          setSuggestionsLoading(false);
+        }
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, [symptoms]);
 
   useEffect(() => () => {
     if (recognitionRef.current) {
@@ -363,6 +420,7 @@ function App() {
       !symptoms.includes(symptom)
     ))
     .slice(0, 100);
+  const wikiUrl = prediction ? getWikipediaUrl(prediction.prediction.disease) : null;
 
   return (
     <div
@@ -518,6 +576,43 @@ function App() {
               </div>
             )}
 
+            {/* Suggested Symptoms */}
+            {symptoms.length > 0 && (
+              <div className="mb-6">
+                <div className="flex items-center gap-2 mb-3">
+                  <MdTrendingUp className="text-purple-400 text-lg" />
+                  <label className={`font-semibold ${themeClasses.labelText}`}>
+                    Suggested Symptoms
+                  </label>
+                  {suggestionsLoading && (
+                    <span className={`text-xs ${themeClasses.voiceNote}`}>
+                      Loading...
+                    </span>
+                  )}
+                </div>
+                {suggestedSymptoms.length === 0 ? (
+                  <p className={`text-sm ${themeClasses.emptyText}`}>
+                    {suggestionsLoading ? 'Loading suggestions...' : 'No related suggestions yet.'}
+                  </p>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {suggestedSymptoms.map((symptom) => (
+                      <button
+                        type="button"
+                        key={symptom}
+                        onClick={() => setSymptoms((prev) => (
+                          prev.includes(symptom) ? prev : [...prev, symptom]
+                        ))}
+                        className={`${themeClasses.suggestionChip} px-4 py-2 rounded-full text-sm font-medium transition-colors`}
+                      >
+                        + {symptom}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Error Alert */}
             {error && (
               <div className={`${themeClasses.errorBg} border rounded-lg p-4 mb-4 flex gap-3`}>
@@ -569,6 +664,10 @@ function App() {
         {/* Results Section */}
         {prediction && (
           <div className="space-y-6 animate-fadeIn">
+            {(() => {
+              const wikiUrl = getWikipediaUrl(prediction.prediction.disease);
+              return (
+                <>
             {/* Disclaimer */}
             <div className="bg-amber-900 border-l-4 border-amber-500 rounded-lg p-4 flex gap-3">
               <MdOutlineWarning className="text-amber-400 text-2xl flex-shrink-0" />
@@ -586,7 +685,18 @@ function App() {
                   </h3>
                 </div>
                 <p className="text-4xl font-bold text-white mb-6">
-                  {prediction.prediction.disease}
+                  {wikiUrl ? (
+                    <a
+                      href={wikiUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="underline decoration-dotted underline-offset-4 hover:decoration-solid"
+                    >
+                      {prediction.prediction.disease}
+                    </a>
+                  ) : (
+                    prediction.prediction.disease
+                  )}
                 </p>
                 
                 {/* Confidence Score */}
@@ -639,6 +749,9 @@ function App() {
                 </div>
               </div>
             </div>
+                </>
+              );
+            })()}
 
             {/* Recommendations Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -710,7 +823,7 @@ function App() {
       {/* Footer */}
       <footer className={`${themeClasses.footerBg} border-t mt-12`}>
         <div className={`max-w-5xl mx-auto px-4 md:px-6 py-6 text-center ${themeClasses.footerText} text-sm`}>
-          <p>Built with React and AI for better health awareness</p>
+          <p>AI Sem 6 | Medical Diagnosis System - Developed by Jaykishan Khushi and Jay</p>
         </div>
       </footer>
     </div>

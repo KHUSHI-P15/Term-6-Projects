@@ -5,8 +5,10 @@ Provides REST API endpoints for disease prediction and information retrieval.
 
 from flask import Flask, request, jsonify
 from flask_cors import CORS
+import csv
 import json
 import os
+from collections import defaultdict
 from predict import load_model, predict_disease
 
 # ============================================================================
@@ -23,6 +25,9 @@ CORS(app)  # Enable CORS for all routes
 MODEL_DATA = None
 DISEASE_INFO = None
 ALL_SYMPTOMS = []
+SYMPTOM_SUGGESTIONS = {}
+SYMPTOM_CANONICAL = {}
+MAX_SUGGESTIONS = 12
 
 # ============================================================================
 # INITIALIZATION FUNCTIONS
@@ -42,6 +47,7 @@ def load_all_data():
         print("[INIT] Loading model...")
         MODEL_DATA = load_model('model.pkl')
         ALL_SYMPTOMS = MODEL_DATA['symptoms']
+        build_symptom_canonical_map()
         print(f"✓ Model loaded successfully")
         
         # Load disease information
@@ -49,6 +55,13 @@ def load_all_data():
         with open('disease_info.json', 'r') as f:
             DISEASE_INFO = json.load(f)
         print(f"✓ Disease information loaded ({len(DISEASE_INFO['diseases'])} diseases)")
+
+        print("[INIT] Loading symptom suggestions...")
+        suggestions_loaded, suggestions_message = load_symptom_suggestions('dataset.csv')
+        if suggestions_loaded:
+            print(f"[INIT] Symptom suggestions ready ({len(SYMPTOM_SUGGESTIONS)} base symptoms)")
+        else:
+            print(f"[WARN] {suggestions_message}")
         
         return True, "All data loaded successfully"
     
@@ -77,6 +90,80 @@ def verify_data_loaded():
             'status': 503
         }
     return True, None
+
+
+def normalize_symptom_name(value):
+    """
+    Normalize symptom string for consistent matching.
+    """
+    return value.strip().lower()
+
+
+def build_symptom_canonical_map():
+    """
+    Map normalized symptom names to canonical names from the model.
+    """
+    global SYMPTOM_CANONICAL
+    SYMPTOM_CANONICAL = {}
+    for symptom in ALL_SYMPTOMS:
+        normalized = normalize_symptom_name(symptom)
+        if normalized not in SYMPTOM_CANONICAL:
+            SYMPTOM_CANONICAL[normalized] = symptom
+
+
+def load_symptom_suggestions(dataset_path='dataset.csv'):
+    """
+    Build a symptom co-occurrence map for related suggestions.
+    """
+    global SYMPTOM_SUGGESTIONS
+
+    if not os.path.exists(dataset_path):
+        return False, f"Dataset not found at {dataset_path}"
+
+    suggestions = defaultdict(lambda: defaultdict(int))
+
+    with open(dataset_path, 'r', newline='', encoding='utf-8') as file:
+        reader = csv.DictReader(file)
+        if not reader.fieldnames:
+            return False, "Dataset is missing a header row"
+
+        symptom_fields = [
+            field for field in reader.fieldnames
+            if field and field.strip().lower() != 'disease'
+        ]
+
+        for row in reader:
+            row_symptoms = set()
+
+            for field in symptom_fields:
+                raw_value = row.get(field)
+                if not raw_value:
+                    continue
+
+                for chunk in str(raw_value).split(','):
+                    normalized = normalize_symptom_name(chunk)
+                    if not normalized or normalized == 'nan':
+                        continue
+
+                    if normalized not in SYMPTOM_CANONICAL:
+                        continue
+
+                    canonical = SYMPTOM_CANONICAL[normalized]
+                    row_symptoms.add(canonical)
+
+            if len(row_symptoms) < 2:
+                continue
+
+            for symptom in row_symptoms:
+                for other in row_symptoms:
+                    if other != symptom:
+                        suggestions[symptom][other] += 1
+
+    SYMPTOM_SUGGESTIONS = {
+        symptom: dict(related)
+        for symptom, related in suggestions.items()
+    }
+    return True, "Symptom suggestions loaded"
 
 
 # ============================================================================
@@ -149,6 +236,7 @@ def home():
         'description': 'ML-based disease prediction API',
         'endpoints': {
             'POST /predict': 'Predict disease from symptoms',
+            'POST /suggestions': 'Get related symptom suggestions',
             'GET /symptoms': 'Get all available symptoms',
             'GET /diseases': 'Get all diseases in system',
             'GET /health': 'Check API health'
@@ -264,6 +352,68 @@ def predict():
             'error': 'Prediction error',
             'message': str(e)
         }), 500
+
+
+@app.route('/suggestions', methods=['POST'])
+def get_suggestions():
+    """
+    Suggest related symptoms based on selected symptoms.
+
+    Request JSON:
+    {
+        "symptoms": ["fever", "cough"]
+    }
+    """
+    is_loaded, error = verify_data_loaded()
+    if not is_loaded:
+        return jsonify(error), error.get('status', 503)
+
+    if not request.json:
+        return jsonify({
+            'success': False,
+            'error': 'Invalid request',
+            'message': 'Request body must be JSON'
+        }), 400
+
+    symptoms = request.json.get('symptoms', [])
+
+    if not isinstance(symptoms, list):
+        return jsonify({
+            'success': False,
+            'error': 'Invalid symptoms format',
+            'message': 'Symptoms must be a list of strings'
+        }), 400
+
+    if len(symptoms) == 0 or not SYMPTOM_SUGGESTIONS:
+        return jsonify({
+            'success': True,
+            'total': 0,
+            'suggestions': []
+        }), 200
+
+    selected = []
+    for symptom in symptoms:
+        normalized = normalize_symptom_name(str(symptom))
+        canonical = SYMPTOM_CANONICAL.get(normalized, symptom)
+        selected.append(canonical)
+
+    selected_set = set(selected)
+    scores = defaultdict(int)
+
+    for symptom in selected_set:
+        related = SYMPTOM_SUGGESTIONS.get(symptom, {})
+        for other, count in related.items():
+            if other not in selected_set:
+                scores[other] += count
+
+    ranked = sorted(scores.items(), key=lambda item: item[1], reverse=True)
+    suggestions = [symptom for symptom, _ in ranked[:MAX_SUGGESTIONS]]
+
+    return jsonify({
+        'success': True,
+        'total': len(suggestions),
+        'suggestions': suggestions
+    }), 200
 
 
 @app.route('/symptoms', methods=['GET'])
@@ -414,6 +564,7 @@ if __name__ == '__main__':
     print("  GET  http://localhost:5000/              - API info")
     print("  GET  http://localhost:5000/health        - Health check")
     print("  POST http://localhost:5000/predict       - Disease prediction")
+    print("  POST http://localhost:5000/suggestions   - Related symptom suggestions")
     print("  GET  http://localhost:5000/symptoms      - Available symptoms")
     print("  GET  http://localhost:5000/diseases      - Available diseases")
     print("\n")
