@@ -27,6 +27,8 @@ DISEASE_INFO = None
 ALL_SYMPTOMS = []
 SYMPTOM_SUGGESTIONS = {}
 SYMPTOM_CANONICAL = {}
+CSV_PRECAUTIONS = {}
+DISEASE_NAME_LOOKUP = {}
 MAX_SUGGESTIONS = 12
 
 # ============================================================================
@@ -55,6 +57,14 @@ def load_all_data():
         with open('disease_info.json', 'r') as f:
             DISEASE_INFO = json.load(f)
         print(f"✓ Disease information loaded ({len(DISEASE_INFO['diseases'])} diseases)")
+        build_disease_name_lookup()
+
+        print("[INIT] Loading precaution CSV...")
+        precautions_loaded, precautions_message = load_precautions_from_csv('symptom_precaution.csv')
+        if precautions_loaded:
+            print(f"✓ {precautions_message}")
+        else:
+            print(f"[WARN] {precautions_message}")
 
         print("[INIT] Loading symptom suggestions...")
         suggestions_loaded, suggestions_message = load_symptom_suggestions('dataset.csv')
@@ -99,6 +109,13 @@ def normalize_symptom_name(value):
     return value.strip().lower()
 
 
+def normalize_disease_name(value):
+    """
+    Normalize disease string for consistent matching.
+    """
+    return str(value).strip().lower()
+
+
 def build_symptom_canonical_map():
     """
     Map normalized symptom names to canonical names from the model.
@@ -109,6 +126,81 @@ def build_symptom_canonical_map():
         normalized = normalize_symptom_name(symptom)
         if normalized not in SYMPTOM_CANONICAL:
             SYMPTOM_CANONICAL[normalized] = symptom
+
+
+def build_disease_name_lookup():
+    """
+    Map normalized disease names to their canonical keys in DISEASE_INFO.
+    """
+    global DISEASE_NAME_LOOKUP
+    DISEASE_NAME_LOOKUP = {}
+
+    if not DISEASE_INFO or 'diseases' not in DISEASE_INFO:
+        return
+
+    for disease_name in DISEASE_INFO['diseases']:
+        normalized = normalize_disease_name(disease_name)
+        if normalized not in DISEASE_NAME_LOOKUP:
+            DISEASE_NAME_LOOKUP[normalized] = disease_name
+
+
+def load_precautions_from_csv(csv_path='symptom_precaution.csv'):
+    """
+    Load precautions from a CSV file into a normalized lookup.
+    """
+    global CSV_PRECAUTIONS
+
+    if not os.path.exists(csv_path):
+        return False, f"Precaution CSV not found at {csv_path}"
+
+    with open(csv_path, 'r', newline='', encoding='utf-8') as file:
+        reader = csv.DictReader(file)
+        if not reader.fieldnames:
+            return False, "Precaution CSV is missing a header row"
+
+        disease_field = None
+        for field in reader.fieldnames:
+            if normalize_disease_name(field) == 'disease':
+                disease_field = field
+                break
+
+        if not disease_field:
+            disease_field = reader.fieldnames[0]
+
+        precaution_fields = [
+            field for field in reader.fieldnames
+            if field != disease_field and normalize_disease_name(field).startswith('precaution')
+        ]
+
+        precautions_map = {}
+
+        for row in reader:
+            disease_value = str(row.get(disease_field, '')).strip()
+            if not disease_value:
+                continue
+
+            normalized_disease = normalize_disease_name(disease_value)
+            row_precautions = []
+
+            for field in precaution_fields:
+                value = row.get(field, '')
+                cleaned = str(value).strip()
+                if cleaned:
+                    row_precautions.append(cleaned)
+
+            if not row_precautions:
+                continue
+
+            existing = precautions_map.get(normalized_disease, [])
+            existing_lower = {item.lower() for item in existing}
+            for item in row_precautions:
+                if item.lower() not in existing_lower:
+                    existing.append(item)
+                    existing_lower.add(item.lower())
+            precautions_map[normalized_disease] = existing
+
+    CSV_PRECAUTIONS = precautions_map
+    return True, f"Precautions loaded ({len(CSV_PRECAUTIONS)} diseases)"
 
 
 def load_symptom_suggestions(dataset_path='dataset.csv'):
@@ -180,11 +272,33 @@ def get_disease_info(disease_name):
     Returns:
         dict: Disease information or empty dict if not found
     """
-    if disease_name in DISEASE_INFO['diseases']:
-        return DISEASE_INFO['diseases'][disease_name]
+    normalized = normalize_disease_name(disease_name)
+    matched_key = DISEASE_NAME_LOOKUP.get(normalized, disease_name)
+    disease_info = DISEASE_INFO['diseases'].get(matched_key, {})
+
+    precautions = disease_info.get('precautions', [])
+    csv_precautions = CSV_PRECAUTIONS.get(normalized, [])
+
+    if csv_precautions:
+        if precautions:
+            existing = {item.strip().lower() for item in precautions}
+            for item in csv_precautions:
+                if item.strip().lower() not in existing:
+                    precautions.append(item)
+                    existing.add(item.strip().lower())
+        else:
+            precautions = csv_precautions
+
+    medicines = disease_info.get('medicines', [])
+
+    if not precautions:
+        precautions = ['Consult a healthcare professional']
+    if not medicines:
+        medicines = ['Consult a healthcare professional']
+
     return {
-        'precautions': ['Consult a healthcare professional'],
-        'medicines': ['Consult a healthcare professional']
+        'precautions': precautions,
+        'medicines': medicines
     }
 
 
