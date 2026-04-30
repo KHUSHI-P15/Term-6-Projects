@@ -34,6 +34,22 @@ const splitSpokenSymptoms = (value) => (
     .filter(Boolean)
 );
 
+const getVoiceErrorMessage = (error) => {
+  switch (error) {
+    case 'network':
+      return 'Voice input needs an internet connection. Check your network and try again, or type symptoms separated by commas.';
+    case 'not-allowed':
+    case 'service-not-allowed':
+      return 'Microphone permission is blocked. Allow mic access and try again.';
+    case 'no-speech':
+      return 'No speech detected. Try speaking a bit closer to the mic.';
+    case 'audio-capture':
+      return 'No microphone detected. Plug in a mic and try again.';
+    default:
+      return `Voice input error: ${error}`;
+  }
+};
+
 const getInitialTheme = () => {
   if (typeof window === 'undefined') {
     return 'dark';
@@ -279,7 +295,13 @@ function App() {
     };
 
     recognition.onerror = (event) => {
-      setError(`Voice input error: ${event.error}`);
+      setError(getVoiceErrorMessage(event.error));
+      if (voiceTimeoutRef.current) {
+        clearTimeout(voiceTimeoutRef.current);
+        voiceTimeoutRef.current = null;
+      }
+      setIsListening(false);
+      recognitionRef.current = null;
     };
 
     recognition.onend = () => {
@@ -340,7 +362,7 @@ function App() {
       normalizeForMatch(symptom).includes(normalizedInput) &&
       !symptoms.includes(symptom)
     ))
-    .slice(0, 8);
+    .slice(0, 100);
 
   return (
     <div
@@ -458,7 +480,6 @@ function App() {
                 </option>
                 {availableSymptoms
                   .filter(s => !symptoms.includes(s))
-                  .slice(0, 15)
                   .map((symptom) => (
                     <option key={symptom} value={symptom} className={isDark ? 'bg-slate-700' : 'bg-white'}>
                       {symptom}
