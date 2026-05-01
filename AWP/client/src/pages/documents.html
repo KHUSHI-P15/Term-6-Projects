@@ -1,0 +1,193 @@
+<div class="space-y-4">
+
+  <!-- Header -->
+  <div class="flex items-center justify-between">
+    <h1 class="text-base font-semibold" style="color:var(--text)">Documents</h1>
+    <div class="flex items-center gap-2">
+      <button type="button" class="btn btn-sm" ng-class="view==='grid' ? 'btn-primary' : 'btn-secondary'"
+        ng-click="view='grid'; persistView()">
+        <i data-lucide="layout-grid"></i> Grid
+      </button>
+      <button type="button" class="btn btn-sm" ng-class="view==='list' ? 'btn-primary' : 'btn-secondary'"
+        ng-click="view='list'; persistView()">
+        <i data-lucide="list"></i> List
+      </button>
+    </div>
+  </div>
+
+  <!-- Skeleton -->
+  <div ng-if="loading" class="grid md:grid-cols-3 gap-4">
+    <div class="card p-4" ng-repeat="n in [1,2,3,4,5,6] track by $index">
+      <div class="h-3.5 w-2/3 skeleton mb-3"></div>
+      <div class="h-3 w-1/2 skeleton mb-4"></div>
+      <div class="h-7 skeleton"></div>
+    </div>
+  </div>
+
+  <!-- Empty -->
+  <div ng-if="!loading && !documents.length" class="card p-12 flex flex-col items-center text-center">
+    <div class="w-12 h-12 rounded-xl flex items-center justify-center mb-4"
+      style="background:rgba(79,110,247,0.1);border:1px solid rgba(79,110,247,0.2)">
+      <i data-lucide="folder-open" style="color:#93a8ff;width:22px;height:22px"></i>
+    </div>
+    <p class="text-sm font-medium mb-1" style="color:var(--text)">No documents yet</p>
+    <p class="text-xs mb-4" style="color:var(--muted)">Upload your first file to get started.</p>
+    <a href="#/upload" class="btn btn-primary btn-sm">
+      <i data-lucide="plus"></i> Upload Document
+    </a>
+  </div>
+
+  <!-- Grid -->
+  <div ng-if="!loading && documents.length && view==='grid'" class="grid md:grid-cols-3 gap-4">
+    <article ng-repeat="d in pagedDocuments() track by d._id" class="card p-4 flex flex-col"
+      style="transition:border-color 0.15s"
+      onmouseenter="this.style.borderColor='rgba(79,110,247,0.4)'"
+      onmouseleave="this.style.borderColor=''">
+
+      <div class="flex items-start justify-between gap-2 mb-3">
+        <div class="flex items-center gap-2 min-w-0">
+          <div class="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+            style="background:rgba(79,110,247,0.1);border:1px solid rgba(79,110,247,0.2)">
+            <i data-lucide="file-text" style="color:#93a8ff;width:14px;height:14px"></i>
+          </div>
+          <span class="text-sm font-medium truncate" style="color:var(--text)">{{d.title}}</span>
+        </div>
+        <span class="badge badge-gray flex-shrink-0 uppercase" style="font-size:10px">
+          {{(d.filename||'').split('.').pop()||'file'}}
+        </span>
+      </div>
+
+      <div class="flex items-center gap-1.5 text-xs mb-3" style="color:var(--muted)">
+        <i data-lucide="calendar" style="width:12px;height:12px;flex-shrink:0"></i>
+        {{d.createdAt | date:'mediumDate'}}
+      </div>
+
+      <div class="flex flex-wrap gap-1 flex-1 mb-3 min-h-[20px]">
+        <span ng-repeat="tag in d.tags" class="badge badge-blue">{{tag}}</span>
+        <span ng-if="!d.tags.length" class="text-xs" style="color:var(--muted)">No tags</span>
+      </div>
+
+      <div class="flex items-center gap-1.5 pt-3" style="border-top:1px solid var(--border)">
+        <a ng-href="{{fileUrl(d)}}" target="_blank" class="btn btn-secondary btn-sm flex-1">
+          View
+        </a>
+        <button type="button" ng-click="openEdit(d)" class="btn btn-secondary btn-sm flex-1">
+          Edit
+        </button>
+        <button type="button" ng-click="remove(d)" class="btn btn-danger btn-sm btn-icon" title="Delete">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none">
+            <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+            <path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
+          </svg>
+        </button>
+      </div>
+    </article>
+  </div>
+
+  <!-- List -->
+  <div ng-if="!loading && documents.length && view==='list'" class="card overflow-x-auto">
+    <table>
+      <thead>
+        <tr>
+          <th class="cursor-pointer" ng-click="sortBy('title')">
+            <div class="flex items-center gap-1.5">
+              <i data-lucide="file-text" style="width:12px;height:12px"></i> Title
+            </div>
+          </th>
+          <th><div class="flex items-center gap-1.5"><i data-lucide="tag" style="width:12px;height:12px"></i> Tags</div></th>
+          <th class="cursor-pointer" ng-click="sortBy('createdAt')">
+            <div class="flex items-center gap-1.5"><i data-lucide="calendar" style="width:12px;height:12px"></i> Uploaded</div>
+          </th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr ng-repeat="d in pagedDocuments() track by d._id">
+          <td>
+            <div class="flex items-center gap-2.5">
+              <div class="w-7 h-7 rounded flex items-center justify-center flex-shrink-0"
+                style="background:rgba(79,110,247,0.1);border:1px solid rgba(79,110,247,0.2)">
+                <i data-lucide="file-text" style="color:#93a8ff;width:12px;height:12px"></i>
+              </div>
+              <span class="font-medium" style="color:var(--text)">{{d.title}}</span>
+            </div>
+          </td>
+          <td>
+            <div class="flex flex-wrap gap-1">
+              <span ng-repeat="tag in d.tags" class="badge badge-blue">{{tag}}</span>
+              <span ng-if="!d.tags.length" style="color:var(--muted)">—</span>
+            </div>
+          </td>
+          <td>{{d.createdAt | date:'mediumDate'}}</td>
+          <td>
+            <div class="flex items-center gap-1.5">
+              <a ng-href="{{fileUrl(d)}}" target="_blank" class="btn btn-secondary btn-sm">
+                View
+              </a>
+              <button type="button" ng-click="openEdit(d)" class="btn btn-secondary btn-sm">
+                Edit
+              </button>
+              <button type="button" ng-click="remove(d)" class="btn btn-danger btn-sm">
+                Delete
+              </button>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Pagination -->
+  <div ng-if="!loading && documents.length" class="flex items-center justify-between">
+    <span class="text-xs" style="color:var(--muted)">{{filtered.length}} document{{filtered.length !== 1 ? 's' : ''}}</span>
+    <div class="flex items-center gap-2">
+      <button type="button" class="btn btn-secondary btn-sm" ng-click="prevPage()" ng-disabled="page===1">← Prev</button>
+      <span class="text-xs px-1" style="color:var(--muted)">{{page}} / {{totalPages()}}</span>
+      <button type="button" class="btn btn-secondary btn-sm" ng-click="nextPage()" ng-disabled="page===totalPages()">Next →</button>
+    </div>
+  </div>
+
+  <!-- Edit Modal -->
+  <div ng-if="editModal"
+    ng-click="editModal=false"
+    style="position:fixed;inset:0;z-index:40;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(0,0,0,0.75)">
+    <div ng-click="$event.stopPropagation()"
+      style="background:var(--card);border:1px solid var(--border);border-radius:8px;width:100%;max-width:440px;padding:24px;position:relative">
+
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+        <span style="font-size:14px;font-weight:600;color:var(--text)">Edit Document</span>
+        <button type="button" ng-click="closeEdit()"
+          style="background:rgba(255,255,255,0.06);border:1px solid var(--border-2);color:var(--muted-2);border-radius:6px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;font-family:inherit;flex-shrink:0">
+          ✕
+        </button>
+      </div>
+
+      <div style="margin-bottom:16px">
+        <label style="display:block;font-size:12px;font-weight:500;color:var(--muted-2);margin-bottom:6px">Title</label>
+        <input ng-model="editForm.title"
+          style="display:block;width:100%;height:36px;padding:0 12px;background:var(--card-2);border:1px solid var(--border-2);border-radius:6px;color:var(--text);font-size:13.5px;font-family:inherit;outline:none;box-sizing:border-box" />
+      </div>
+
+      <div style="margin-bottom:20px">
+        <label style="display:block;font-size:12px;font-weight:500;color:var(--muted-2);margin-bottom:6px">
+          Tags <span style="color:var(--muted);font-weight:400">(comma-separated)</span>
+        </label>
+        <input ng-model="editForm.tags" placeholder="invoice, finance, 2026"
+          style="display:block;width:100%;height:36px;padding:0 12px;background:var(--card-2);border:1px solid var(--border-2);border-radius:6px;color:var(--text);font-size:13.5px;font-family:inherit;outline:none;box-sizing:border-box" />
+      </div>
+
+      <div style="display:flex;justify-content:flex-end;gap:8px">
+        <button type="button" ng-click="closeEdit()"
+          style="height:32px;padding:0 16px;font-size:13px;font-weight:500;border-radius:6px;cursor:pointer;background:rgba(255,255,255,0.07);color:var(--text-2);border:1px solid var(--border-2);font-family:inherit">
+          Cancel
+        </button>
+        <button type="button" ng-click="saveEdit()"
+          style="height:32px;padding:0 16px;font-size:13px;font-weight:500;border-radius:6px;cursor:pointer;background:var(--accent);color:#fff;border:none;font-family:inherit">
+          Save Changes
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+</div>

@@ -1,0 +1,57 @@
+<div style="max-width:520px">
+  <div class="card p-6">
+
+    <div class="flex items-center gap-3 mb-5">
+      <div class="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
+        style="background:rgba(79,110,247,0.12);border:1px solid rgba(79,110,247,0.2)">
+        <i data-lucide="upload" style="color:#93a8ff;width:17px;height:17px"></i>
+      </div>
+      <div>
+        <h1 class="text-sm font-semibold" style="color:var(--text)">Upload Document</h1>
+        <p class="text-xs" style="color:var(--muted)">Add a new file to your document library</p>
+      </div>
+    </div>
+
+    <form ng-submit="upload()" class="space-y-4" novalidate>
+
+      <div>
+        <label class="block text-xs font-medium mb-1.5" style="color:var(--muted-2)">Title</label>
+        <input autofocus ng-model="form.title" required class="input" placeholder="e.g. Q1 Financial Report" />
+      </div>
+
+      <div>
+        <label class="block text-xs font-medium mb-1.5" style="color:var(--muted-2)">
+          Tags <span style="color:var(--muted)">(comma-separated, optional)</span>
+        </label>
+        <input ng-model="form.tags" class="input" placeholder="invoice, finance, 2026" />
+      </div>
+
+      <div>
+        <label class="block text-xs font-medium mb-1.5" style="color:var(--muted-2)">File</label>
+        <label class="flex flex-col items-center gap-3 p-6 rounded-lg cursor-pointer"
+          style="border:1.5px dashed var(--border-2);background:var(--card-2);transition:border-color 0.15s"
+          onmouseover="this.style.borderColor='var(--accent)'"
+          onmouseout="this.style.borderColor='var(--border-2)'">
+          <div class="w-10 h-10 rounded-lg flex items-center justify-center"
+            style="background:rgba(79,110,247,0.1);border:1px solid rgba(79,110,247,0.2)">
+            <i data-lucide="cloud-upload" style="color:#93a8ff;width:20px;height:20px"></i>
+          </div>
+          <div class="text-center">
+            <p class="text-sm font-medium" style="color:var(--text)" ng-if="!form.file">Click to choose a file</p>
+            <p class="text-sm font-medium" style="color:#93a8ff" ng-if="form.file">
+              <i data-lucide="file-check" style="width:13px;height:13px;display:inline;vertical-align:middle;margin-right:4px"></i>
+              {{form.file.name}}
+            </p>
+            <p class="text-xs mt-1" style="color:var(--muted)">PDF, DOCX, XLSX, PNG, JPG, ZIP · Max 25 MB</p>
+          </div>
+          <input type="file" file-model="form.file" class="hidden" />
+        </label>
+      </div>
+
+      <button type="submit" class="btn btn-primary w-full" style="height:38px;font-size:14px" ng-disabled="uploading">
+        {{uploading ? 'Uploading…' : 'Upload File'}}
+      </button>
+
+    </form>
+  </div>
+</div>

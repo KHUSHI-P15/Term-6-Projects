@@ -1,0 +1,29 @@
+<div class="space-y-4">
+
+  <div class="flex items-center justify-between">
+    <h1 class="text-base font-semibold" style="color:var(--text)">Reports</h1>
+    <span class="badge badge-blue">
+      <i data-lucide="shield" style="width:11px;height:11px"></i> Admin Only
+    </span>
+  </div>
+
+  <div class="grid md:grid-cols-2 gap-4">
+
+    <div class="card p-5">
+      <div class="flex items-center gap-2 mb-4">
+        <i data-lucide="bar-chart-2" style="color:var(--accent);width:15px;height:15px"></i>
+        <p class="text-xs font-semibold uppercase tracking-widest" style="color:var(--muted)">Uploads by Day</p>
+      </div>
+      <canvas id="reportsUploadsChart" height="160"></canvas>
+    </div>
+
+    <div class="card p-5">
+      <div class="flex items-center gap-2 mb-4">
+        <i data-lucide="pie-chart" style="color:var(--accent);width:15px;height:15px"></i>
+        <p class="text-xs font-semibold uppercase tracking-widest" style="color:var(--muted)">Tags Breakdown</p>
+      </div>
+      <canvas id="reportsTagsChart" height="160"></canvas>
+    </div>
+
+  </div>
+</div>

@@ -1,0 +1,87 @@
+<div class="min-h-screen flex items-center justify-center p-4" style="background:var(--bg)">
+  <div class="w-full" style="max-width:860px; background:var(--card); border:1px solid var(--border); border-radius:10px; overflow:hidden">
+    <div class="grid lg:grid-cols-2">
+
+      <!-- Left -->
+      <div class="hidden lg:flex flex-col justify-between p-10" style="background:#111; border-right:1px solid var(--border)">
+        <div>
+          <div class="flex items-center gap-2.5 mb-8">
+            <div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background:var(--accent)">
+              <i data-lucide="file-text" style="color:#fff;width:16px;height:16px"></i>
+            </div>
+            <span class="font-semibold text-sm" style="color:var(--text)">DocManager</span>
+          </div>
+          <h1 class="text-xl font-semibold mb-3 leading-snug" style="color:var(--text)">Document Management System</h1>
+          <p class="text-sm leading-relaxed" style="color:var(--muted-2)">Secure, role-based document control with full-text search and analytics.</p>
+        </div>
+        <div class="space-y-3 mt-8">
+          <div class="flex items-center gap-3 text-sm" style="color:var(--muted-2)">
+            <i data-lucide="shield-check" style="color:var(--accent);width:15px;height:15px;flex-shrink:0"></i>
+            JWT-secured authentication
+          </div>
+          <div class="flex items-center gap-3 text-sm" style="color:var(--muted-2)">
+            <i data-lucide="lock" style="color:var(--accent);width:15px;height:15px;flex-shrink:0"></i>
+            Role-based access control
+          </div>
+          <div class="flex items-center gap-3 text-sm" style="color:var(--muted-2)">
+            <i data-lucide="search" style="color:var(--accent);width:15px;height:15px;flex-shrink:0"></i>
+            Full-text search &amp; analytics
+          </div>
+        </div>
+      </div>
+
+      <!-- Right -->
+      <div class="p-8 flex flex-col justify-center">
+        <h2 class="text-lg font-semibold mb-1" style="color:var(--text)">
+          {{mode === 'login' ? 'Sign in' : 'Create account'}}
+        </h2>
+        <p class="text-sm mb-6" style="color:var(--muted)">
+          {{mode === 'login' ? 'Enter your credentials to continue.' : 'Fill in the details to register.'}}
+        </p>
+
+        <form ng-submit="submitAuth()" class="space-y-4" novalidate>
+          <div ng-if="mode === 'register'">
+            <label class="block text-xs font-medium mb-1.5" style="color:var(--muted-2)">Full Name</label>
+            <input autofocus ng-model="form.name" class="input" placeholder="John Doe" required />
+          </div>
+          <div>
+            <label class="block text-xs font-medium mb-1.5" style="color:var(--muted-2)">Email</label>
+            <input ng-model="form.email" type="email" class="input" placeholder="you@company.com" required />
+          </div>
+          <div>
+            <label class="block text-xs font-medium mb-1.5" style="color:var(--muted-2)">Password</label>
+            <div class="relative">
+              <input ng-model="form.password" type="{{showPassword ? 'text' : 'password'}}"
+                class="input" style="padding-right:40px" placeholder="••••••••" required />
+              <button type="button" ng-click="showPassword=!showPassword" tabindex="-1"
+                style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--muted);display:flex;align-items:center">
+                <i ng-if="!showPassword" data-lucide="eye"     style="width:16px;height:16px"></i>
+                <i ng-if="showPassword"  data-lucide="eye-off" style="width:16px;height:16px"></i>
+              </button>
+            </div>
+            <p ng-if="mode==='register' && form.password && form.password.length < 6"
+              class="text-xs mt-1.5" style="color:#fca5a5">At least 6 characters required.</p>
+          </div>
+
+          <div ng-if="error" class="flex items-center gap-2 text-xs px-3 py-2.5 rounded-md"
+            style="background:rgba(239,68,68,0.08); color:#fca5a5; border:1px solid rgba(239,68,68,0.2)">
+            <i data-lucide="alert-circle" style="width:14px;height:14px;flex-shrink:0"></i>
+            {{error}}
+          </div>
+
+          <button type="submit" class="btn btn-primary w-full" style="height:38px; font-size:14px" ng-disabled="loading">
+            {{loading ? 'Please wait…' : (mode === 'login' ? 'Sign In' : 'Create Account')}}
+          </button>
+        </form>
+
+        <p class="mt-5 text-xs text-center" style="color:var(--muted)">
+          {{mode === 'login' ? "Don't have an account?" : 'Already have an account?'}}
+          <button ng-click="toggleMode()" style="color:var(--accent);background:none;border:none;cursor:pointer;font-size:12px;font-weight:500;margin-left:4px">
+            {{mode === 'login' ? 'Register' : 'Sign in'}}
+          </button>
+        </p>
+      </div>
+
+    </div>
+  </div>
+</div>
