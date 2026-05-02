@@ -74,11 +74,42 @@
     $scope.sidebarOpen = false
     $scope.searchInput = ''
     $scope.currentUser = $rootScope.currentUser || {}
+    const THEME_KEY = 'dmsTheme'
+
+    function getStoredTheme(){
+      try { return localStorage.getItem(THEME_KEY) } catch(e) { return null }
+    }
+
+    function setStoredTheme(theme){
+      try { localStorage.setItem(THEME_KEY, theme) } catch(e) {}
+    }
+
+    function getPreferredTheme(){
+      if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) return 'light'
+      return 'dark'
+    }
+
+    function applyTheme(theme){
+      var root = document.documentElement
+      root.classList.remove('theme-light', 'theme-dark')
+      root.classList.add('theme-' + theme)
+    }
+
+    $scope.theme = getStoredTheme() || getPreferredTheme()
+    applyTheme($scope.theme)
     // toasts must reference $rootScope.toasts directly — not a snapshot copy
     // The template uses `toasts` which resolves via scope chain to $rootScope.toasts
 
     $scope.logout = function(){
       $rootScope.logout()
+    }
+
+    $scope.toggleTheme = function(){
+      var next = $scope.theme === 'dark' ? 'light' : 'dark'
+      $scope.theme = next
+      applyTheme(next)
+      setStoredTheme(next)
+      $timeout(function(){ if (window.lucide) window.lucide.createIcons() }, 10)
     }
 
     $scope.search = function(q){

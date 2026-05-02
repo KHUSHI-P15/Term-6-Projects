@@ -7,6 +7,17 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <script>
+      (function(){
+        try {
+          var t = localStorage.getItem('dmsTheme')
+          if (t !== 'light' && t !== 'dark') {
+            t = (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) ? 'light' : 'dark'
+          }
+          document.documentElement.classList.add('theme-' + t)
+        } catch(e) {}
+      })();
+    </script>
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Lucide icons -->
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
@@ -25,6 +36,20 @@
         --text:      #f0f0f0;
         --text-2:    #c9c9c9;
       }
+      html.theme-light {
+        --accent:    #4f6ef7;
+        --accent-h:  #3b5bdb;
+        --bg:        #f6f7fb;
+        --surface:   #f1f3f7;
+        --card:      #ffffff;
+        --card-2:    #f5f6fa;
+        --border:    #e4e7ee;
+        --border-2:  #d7dbe6;
+        --muted:     #6b7280;
+        --muted-2:   #4b5563;
+        --text:      #111827;
+        --text-2:    #374151;
+      }
       *, html, body { font-family: 'Inter', system-ui, sans-serif; -webkit-font-smoothing: antialiased; box-sizing: border-box; }
       body { background: var(--bg); color: var(--text); min-height: 100vh; font-size: 14px; line-height: 1.5; }
 
@@ -35,6 +60,7 @@
       /* Layout */
       .sidebar { background: var(--surface); border-right: 1px solid var(--border); width: 220px; flex-shrink: 0; }
       .topbar  { background: rgba(20,20,20,0.95); border-bottom: 1px solid var(--border); backdrop-filter: blur(10px); }
+      html.theme-light .topbar { background: rgba(248,250,252,0.95); }
 
       /* Cards */
       .card  { background: var(--card);   border: 1px solid var(--border);   border-radius: 8px; }
@@ -50,6 +76,8 @@
       }
       .nav-item:hover  { background: rgba(255,255,255,0.07); color: var(--text); }
       .nav-item.active { background: rgba(79,110,247,0.15);  color: #93a8ff; }
+      html.theme-light .nav-item:hover  { background: rgba(15,23,42,0.06); color: var(--text); }
+      html.theme-light .nav-item.active { background: rgba(79,110,247,0.12); color: #3b5bdb; }
       .nav-item i[data-lucide] svg { width: 16px; height: 16px; }
 
       /* Buttons */
@@ -66,6 +94,7 @@
       .btn-primary:disabled { opacity: 0.45; cursor: not-allowed; }
       .btn-secondary { background: rgba(255,255,255,0.07); color: var(--text-2); border: 1px solid var(--border-2); }
       .btn-secondary:hover { background: rgba(255,255,255,0.12); color: var(--text); }
+      html.theme-light .btn-secondary { background: #f3f4f6; color: var(--text-2); border: 1px solid var(--border-2); }
       .btn-danger    { background: rgba(239,68,68,0.1); color: #fca5a5; border: 1px solid rgba(239,68,68,0.2); }
       .btn-danger:hover { background: rgba(239,68,68,0.2); }
       .btn-ghost     { background: transparent; color: var(--muted-2); border: 1px solid var(--border); }
@@ -105,11 +134,14 @@
       tbody tr { border-bottom: 1px solid rgba(46,46,46,0.8); transition: background 0.1s; }
       tbody tr:last-child { border-bottom: none; }
       tbody tr:hover { background: rgba(255,255,255,0.025); }
+      html.theme-light tbody tr { border-bottom: 1px solid rgba(226,232,240,0.9); }
+      html.theme-light tbody tr:hover { background: rgba(15,23,42,0.03); }
       th { text-align: left; font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.07em; padding: 10px 16px; }
       td { padding: 11px 16px; font-size: 13.5px; color: var(--text-2); vertical-align: middle; }
 
       /* Skeleton */
       .skeleton { background: linear-gradient(90deg, #222 25%, #2a2a2a 50%, #222 75%); background-size: 400% 100%; animation: shimmer 1.4s ease infinite; border-radius: 4px; }
+      html.theme-light .skeleton { background: linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 50%, #e5e7eb 75%); background-size: 400% 100%; }
       @keyframes shimmer { 0%{background-position:100% 0} 100%{background-position:-100% 0} }
 
       /* Misc */
@@ -118,7 +150,9 @@
       ::-webkit-scrollbar { width: 5px; height: 5px; }
       ::-webkit-scrollbar-track { background: transparent; }
       ::-webkit-scrollbar-thumb { background: #333; border-radius: 99px; }
+      html.theme-light ::-webkit-scrollbar-thumb { background: #cbd5e1; }
       select option { background: #1c1c1c; color: #f0f0f0; }
+      html.theme-light select option { background: #ffffff; color: #111827; }
       a { text-decoration: none; }
       /* Hard override — prevent Tailwind preflight from expanding inputs */
       input.input, input.input-field { height: 36px !important; max-height: 36px !important; overflow: hidden; }
@@ -216,6 +250,10 @@
             <a href="#/upload" class="btn btn-primary btn-sm hidden sm:inline-flex ml-2">
               <i data-lucide="plus"></i> Upload
             </a>
+            <!-- Theme toggle -->
+            <button type="button" class="btn btn-ghost btn-icon btn-sm" ng-click="toggleTheme()" title="Toggle theme">
+              <i ng-attr-data-lucide="{{theme === 'dark' ? 'sun' : 'moon'}}"></i>
+            </button>
           </div>
         </header>
 

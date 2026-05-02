@@ -3,7 +3,7 @@
     <div class="grid lg:grid-cols-2">
 
       <!-- Left -->
-      <div class="hidden lg:flex flex-col justify-between p-10" style="background:#111; border-right:1px solid var(--border)">
+      <div class="hidden lg:flex flex-col justify-between p-10" style="background:var(--surface); border-right:1px solid var(--border)">
         <div>
           <div class="flex items-center gap-2.5 mb-8">
             <div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background:var(--accent)">
@@ -32,6 +32,11 @@
 
       <!-- Right -->
       <div class="p-8 flex flex-col justify-center">
+        <div class="flex items-center justify-end mb-4">
+          <button type="button" class="btn btn-ghost btn-icon btn-sm" ng-click="toggleTheme()" title="Toggle theme">
+            <i ng-attr-data-lucide="{{theme === 'dark' ? 'sun' : 'moon'}}"></i>
+          </button>
+        </div>
         <h2 class="text-lg font-semibold mb-1" style="color:var(--text)">
           {{mode === 'login' ? 'Sign in' : 'Create account'}}
         </h2>
