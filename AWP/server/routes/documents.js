@@ -56,8 +56,13 @@ router.post('/upload', auth(), (req, res, next) => {
 router.get('/', auth(), async (req, res) => {
   try{
     const q = req.query.q ? String(req.query.q).toLowerCase() : null
-    let query = {}
-    if (q) query = { $or: [ { title: { $regex: q, $options: 'i' } }, { tags: { $in: [ new RegExp(q, 'i') ] } } ] }
+    const isAdmin = req.user.role === 'admin'
+    const baseFilter = isAdmin ? {} : { uploadedBy: req.user._id }
+    let query = baseFilter
+    if (q) {
+      const search = { $or: [ { title: { $regex: q, $options: 'i' } }, { tags: { $in: [ new RegExp(q, 'i') ] } } ] }
+      query = Object.keys(baseFilter).length ? { $and: [ baseFilter, search ] } : search
+    }
     const docs = await Document.find(query).sort({ createdAt: -1 }).populate('uploadedBy', 'name email')
     res.json(docs)
   }catch(err){ res.status(500).json({ message: 'Server error' }) }
@@ -67,6 +72,9 @@ router.get('/:id', auth(), async (req, res) => {
   try{
     const doc = await Document.findById(req.params.id).populate('uploadedBy', 'name email')
     if (!doc) return res.status(404).json({ message: 'Not found' })
+    const isOwner = String(doc.uploadedBy?._id || doc.uploadedBy) === String(req.user._id)
+    const isAdmin = req.user.role === 'admin'
+    if (!isOwner && !isAdmin) return res.status(403).json({ message: 'Forbidden' })
     res.json(doc)
   }catch(err){ res.status(500).json({ message: 'Server error' }) }
 })
