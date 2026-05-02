@@ -28,11 +28,16 @@ async function main(){
 
   app.get('/api/stats', auth(), async (req, res) => {
     try{
+      const isAdmin = req.user.role === 'admin'
+      const baseFilter = isAdmin ? {} : { uploadedBy: req.user._id }
       const [total, users] = await Promise.all([
-        Document.countDocuments(),
-        User.countDocuments()
+        Document.countDocuments(baseFilter),
+        isAdmin ? User.countDocuments() : Promise.resolve(1)
       ])
-      const recent = await Document.find().sort({ createdAt: -1 }).limit(10).populate('uploadedBy', 'name')
+      const recent = await Document.find(baseFilter)
+        .sort({ createdAt: -1 })
+        .limit(10)
+        .populate('uploadedBy', 'name')
       res.json({ total, users, recent })
     }catch(err){ res.status(500).json({ message: 'Server error' }) }
   })
