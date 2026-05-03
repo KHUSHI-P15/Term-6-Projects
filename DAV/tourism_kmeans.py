@@ -1,506 +1,332 @@
+"""
+Tourism Data Clustering & Revenue Analysis
+Subject Project for Data Analysis and Visualization (DAV).
+"""
+
+import json
+import logging
+import sys
 from pathlib import Path
+from typing import Dict, List, Tuple
 
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
-import kagglehub
-from sklearn.decomposition import PCA
 from sklearn.cluster import KMeans
 from sklearn.metrics import silhouette_score
 from sklearn.preprocessing import StandardScaler
-from kagglehub import KaggleDatasetAdapter
 
-
-BASE_DIR = Path(__file__).resolve().parent
-OUTPUT_DIR = BASE_DIR / "output"
-OUTPUT_PATH = OUTPUT_DIR / "country_clustered.csv"
-SUMMARY_PATH = OUTPUT_DIR / "cluster_summary.csv"
-ELBOW_PLOT_PATH = OUTPUT_DIR / "elbow_plot.png"
-CLUSTER_PLOT_PATH = OUTPUT_DIR / "cluster_scatter.png"
-KAGGLE_HANDLE = "imtkaggleteam/tourism"
-KAGGLE_FILE_PATH = "20- average-expenditures-of-tourists-abroad.csv"
-
-
-EXPENDITURE_COLUMN = "Outbound Tourism Expenditure (adjusted for US 2021 inflation)"
+# --- Configuration ---
+DATA_FILE = "world_tourism_economy_data.csv"
+OUTPUT_DIR = Path("output")
 DASHBOARD_PATH = OUTPUT_DIR / "dashboard.html"
 
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+logger = logging.getLogger(__name__)
 
-def load_data() -> pd.DataFrame:
-    return kagglehub.dataset_load(
-        KaggleDatasetAdapter.PANDAS,
-        KAGGLE_HANDLE,
-        KAGGLE_FILE_PATH,
-    )
+def load_and_clean_data() -> pd.DataFrame:
+    df = pd.read_csv(DATA_FILE)
+    df.columns = [col.lower() for col in df.columns]
+    aggregates = ["WLD", "HIC", "MIC", "LIC", "LMC", "UMC", "EUU", "EAS", "ECS", "LCN", "MEA", "NAC", "SAS", "SSA", "AFE", "AFW"]
+    df = df[~df["country_code"].isin(aggregates)]
+    df = df[df["country_code"].str.len() == 3]
+    df[df.select_dtypes(include=[np.number]).columns] = df.select_dtypes(include=[np.number]).fillna(0)
+    return df
 
-
-def build_country_features(df: pd.DataFrame) -> pd.DataFrame:
-    working = df[["Entity", "Code", "Year", EXPENDITURE_COLUMN]].copy()
-    working = working.dropna(subset=["Entity", "Year", EXPENDITURE_COLUMN])
-    working["Year"] = pd.to_numeric(working["Year"], errors="coerce")
-    working[EXPENDITURE_COLUMN] = pd.to_numeric(working[EXPENDITURE_COLUMN], errors="coerce")
-    working = working.dropna(subset=["Year", EXPENDITURE_COLUMN])
-
+def build_features(df: pd.DataFrame) -> pd.DataFrame:
     records = []
-    for entity, group in working.groupby(["Entity", "Code"], dropna=False):
-        group = group.sort_values("Year")
-        years = group["Year"].to_numpy(dtype=float)
-        expenditures = group[EXPENDITURE_COLUMN].to_numpy(dtype=float)
-        start_expenditure = float(expenditures[0])
-        end_expenditure = float(expenditures[-1])
-        growth = end_expenditure - start_expenditure
-        growth_rate = float((growth / start_expenditure) * 100) if start_expenditure else 0.0
-        expenditure_slope = float(np.polyfit(years, expenditures, 1)[0]) if len(group) >= 2 else 0.0
+    for (country, code), group in df.groupby(["country", "country_code"]):
+        recent = group.sort_values("year").tail(10)
+        avg_receipts = recent["tourism_receipts"].mean()
+        avg_arrivals = recent["tourism_arrivals"].mean()
+        avg_gdp = recent["gdp"].mean()
+        if avg_receipts < 1e5 or avg_arrivals < 100: continue
+        records.append({
+            "name": country,
+            "code": code,
+            "receipts": avg_receipts,
+            "arrivals": avg_arrivals,
+            "gdp": avg_gdp,
+            "efficiency": avg_receipts / avg_arrivals,
+            "dependency": (avg_receipts / avg_gdp * 100) if avg_gdp > 0 else 0
+        })
+    return pd.DataFrame(records)
 
-        records.append(
-            {
-                "Entity": entity[0],
-                "Code": entity[1],
-                "years_covered": int(group["Year"].nunique()),
-                "first_year": int(group["Year"].min()),
-                "last_year": int(group["Year"].max()),
-                "start_expenditure": start_expenditure,
-                "end_expenditure": end_expenditure,
-                "avg_expenditure": float(group[EXPENDITURE_COLUMN].mean()),
-                "median_expenditure": float(group[EXPENDITURE_COLUMN].median()),
-                "min_expenditure": float(group[EXPENDITURE_COLUMN].min()),
-                "max_expenditure": float(group[EXPENDITURE_COLUMN].max()),
-                "expenditure_std": float(group[EXPENDITURE_COLUMN].std(ddof=0)),
-                "absolute_growth": float(growth),
-                "growth_rate_percent": growth_rate,
-                "expenditure_slope": expenditure_slope,
-            }
-        )
-
-    country_features = pd.DataFrame(records)
-    country_features = country_features.fillna(country_features.median(numeric_only=True))
-
-    if len(country_features) < 2:
-        raise ValueError("The Kaggle tourism dataset does not contain enough countries for clustering.")
-
-    return country_features
-
-
-def prepare_features(country_features: pd.DataFrame) -> tuple[pd.DataFrame, list[str]]:
-    numeric_columns = [
-        "years_covered",
-        "first_year",
-        "last_year",
-        "start_expenditure",
-        "end_expenditure",
-        "avg_expenditure",
-        "median_expenditure",
-        "min_expenditure",
-        "max_expenditure",
-        "expenditure_std",
-        "absolute_growth",
-        "growth_rate_percent",
-        "expenditure_slope",
-    ]
-    features = country_features[numeric_columns].copy()
-    scaler = StandardScaler()
-    scaled = pd.DataFrame(scaler.fit_transform(features), columns=numeric_columns)
-    return scaled, numeric_columns
-
-
-def find_best_k(features: pd.DataFrame, min_k: int = 2, max_k: int = 6) -> list[dict[str, float]]:
-    scores = []
-    for k in range(min_k, max_k + 1):
-        model = KMeans(n_clusters=k, random_state=42, n_init=10)
-        labels = model.fit_predict(features)
-        scores.append(
-            {
-                "k": k,
-                "inertia": float(model.inertia_),
-                "silhouette": float(silhouette_score(features, labels)),
-            }
-        )
-    return scores
-
-
-def fit_clusters(features: pd.DataFrame, n_clusters: int = 3) -> tuple[KMeans, np.ndarray]:
-    model = KMeans(n_clusters=n_clusters, random_state=42, n_init=10)
-    labels = model.fit_predict(features)
-    return model, labels
-
-
-def build_cluster_summary(clustered_countries: pd.DataFrame) -> pd.DataFrame:
-    summary = clustered_countries.groupby("cluster").agg(
-        countries=("Entity", "count"),
-        avg_years_covered=("years_covered", "mean"),
-        avg_start_expenditure=("start_expenditure", "mean"),
-        avg_end_expenditure=("end_expenditure", "mean"),
-        avg_expenditure=("avg_expenditure", "mean"),
-        avg_growth=("absolute_growth", "mean"),
-        avg_growth_rate_percent=("growth_rate_percent", "mean"),
-        avg_trend_slope=("expenditure_slope", "mean"),
-        total_latest_expenditure=("end_expenditure", "sum"),
-    ).reset_index()
-
-    summary["latest_expenditure_share_percent"] = (
-        summary["total_latest_expenditure"] / summary["total_latest_expenditure"].sum() * 100
-    ).round(2)
-    return summary.sort_values("cluster").reset_index(drop=True)
-
-
-def save_elbow_plot(scores: list[dict[str, float]]) -> None:
-    plt.figure(figsize=(8, 5))
-    k_values = [score["k"] for score in scores]
-    inertias = [score["inertia"] for score in scores]
-    silhouette_values = [score["silhouette"] for score in scores]
-
-    plt.plot(k_values, inertias, marker="o", linewidth=2, label="Inertia")
-    plt.plot(k_values, silhouette_values, marker="o", linewidth=2, label="Silhouette")
-    plt.title("K-Means Cluster Selection")
-    plt.xlabel("Number of clusters (k)")
-    plt.ylabel("Score")
-    plt.xticks(k_values)
-    plt.grid(True, alpha=0.3)
-    plt.legend()
-    plt.tight_layout()
-    plt.savefig(ELBOW_PLOT_PATH, dpi=150)
-    plt.close()
-
-
-def save_cluster_plot(features: pd.DataFrame, labels: np.ndarray, cluster_centers: np.ndarray) -> None:
-    pca = PCA(n_components=2, random_state=42)
-    reduced_features = pca.fit_transform(features)
-    centers_frame = pd.DataFrame(cluster_centers, columns=features.columns)
-    reduced_centers = pca.transform(centers_frame)
-
-    plot_frame = pd.DataFrame(
-        {
-            "component_1": reduced_features[:, 0],
-            "component_2": reduced_features[:, 1],
-            "cluster": labels,
-        }
-    )
-
-    plt.figure(figsize=(8, 6))
-    sns.scatterplot(
-        data=plot_frame,
-        x="component_1",
-        y="component_2",
-        hue="cluster",
-        palette="deep",
-        s=80,
-    )
-    plt.scatter(
-        reduced_centers[:, 0],
-        reduced_centers[:, 1],
-        c="black",
-        s=180,
-        marker="X",
-        label="Centroids",
-    )
-    plt.title("Tourist Segments Visualized with PCA")
-    plt.xlabel("Principal Component 1")
-    plt.ylabel("Principal Component 2")
-    plt.legend()
-    plt.tight_layout()
-    plt.savefig(CLUSTER_PLOT_PATH, dpi=150)
-    plt.close()
-
-
-def generate_html_dashboard(
-    cluster_summary: pd.DataFrame,
-    clustered_countries: pd.DataFrame,
-    scores: list[dict[str, float]],
-) -> None:
-    import base64
-
-    def image_to_base64(image_path: str) -> str:
-        with open(image_path, "rb") as img_file:
-            return base64.b64encode(img_file.read()).decode()
-
-    elbow_b64 = image_to_base64(str(ELBOW_PLOT_PATH))
-    scatter_b64 = image_to_base64(str(CLUSTER_PLOT_PATH))
-
-    cluster_details = []
-    for _, row in clustered_countries.iterrows():
-        cluster_details.append(
-            {
-                "entity": row["Entity"],
-                "cluster": int(row["cluster"]),
-                "avg_expenditure": f"${row['avg_expenditure']:,.0f}",
-                "growth": f"{row['growth_rate_percent']:.1f}%",
-            }
-        )
-
-    summary_html = cluster_summary.to_html(classes="table table-striped", index=False)
-    summary_html = summary_html.replace('<th>', '<th style="background-color: #4CAF50; color: white;">')
-
-    details_rows = ""
-    for detail in cluster_details[:20]:
-        color = "#e8f5e9" if detail["cluster"] == 0 else "#fff3e0"
-        details_rows += f"""
-        <tr style="background-color: {color};">
-            <td>{detail['entity']}</td>
-            <td>{detail['cluster']}</td>
-            <td>{detail['avg_expenditure']}</td>
-            <td>{detail['growth']}</td>
-        </tr>
-        """
-
-    html_content = f"""
+def generate_dashboard(df: pd.DataFrame, summary: pd.DataFrame, elbow: list, stats: dict):
+    payload = {
+        "countries": df.to_dict(orient="records"),
+        "summary": summary.to_dict(orient="records"),
+        "elbow": elbow,
+        "stats": stats
+    }
+    data_json = json.dumps(payload)
+    
+    html_template = """
     <!DOCTYPE html>
     <html lang="en">
     <head>
         <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Tourism Expenditure Clustering Dashboard</title>
+        <title>DAV Project: Tourism Clustering</title>
+        <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+        <script src="https://d3js.org/d3.v7.min.js"></script>
         <style>
-            * {{
-                margin: 0;
-                padding: 0;
-                box-sizing: border-box;
-            }}
-            body {{
-                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                min-height: 100vh;
-                padding: 20px;
-            }}
-            .container {{
-                max-width: 1400px;
-                margin: 0 auto;
-                background: white;
-                border-radius: 15px;
-                box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-                overflow: hidden;
-            }}
-            .header {{
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                color: white;
-                padding: 40px 30px;
-                text-align: center;
-            }}
-            .header h1 {{
-                font-size: 2.5em;
-                margin-bottom: 10px;
-            }}
-            .header p {{
-                font-size: 1.1em;
-                opacity: 0.9;
-            }}
-            .content {{
-                padding: 40px;
-            }}
-            .section {{
-                margin-bottom: 40px;
-            }}
-            .section h2 {{
-                color: #667eea;
-                margin-bottom: 20px;
-                font-size: 1.8em;
-                border-bottom: 3px solid #667eea;
-                padding-bottom: 10px;
-            }}
-            .grid {{
-                display: grid;
-                grid-template-columns: 1fr 1fr;
-                gap: 30px;
-                margin-bottom: 30px;
-            }}
-            @media (max-width: 1024px) {{
-                .grid {{
-                    grid-template-columns: 1fr;
-                }}
-            }}
-            .plot-container {{
-                background: #f8f9fa;
-                border-radius: 10px;
-                padding: 20px;
-                box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-            }}
-            .plot-container img {{
-                width: 100%;
-                height: auto;
-                border-radius: 8px;
-            }}
-            .table-container {{
-                background: #f8f9fa;
-                border-radius: 10px;
-                padding: 20px;
-                box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-                overflow-x: auto;
-            }}
-            table {{
-                width: 100%;
-                border-collapse: collapse;
-                margin: 0;
-            }}
-            th {{
-                background-color: #667eea;
-                color: white;
-                padding: 12px;
-                text-align: left;
-                font-weight: 600;
-            }}
-            td {{
-                padding: 12px;
-                border-bottom: 1px solid #ddd;
-            }}
-            tr:hover {{
-                background-color: #f5f5f5 !important;
-            }}
-            .stats-grid {{
-                display: grid;
-                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-                gap: 20px;
-                margin-bottom: 30px;
-            }}
-            .stat-card {{
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                color: white;
-                padding: 25px;
-                border-radius: 10px;
-                text-align: center;
-                box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-            }}
-            .stat-card h3 {{
-                font-size: 2em;
-                margin-bottom: 10px;
-            }}
-            .stat-card p {{
-                font-size: 0.95em;
-                opacity: 0.9;
-            }}
-            .footer {{
-                background: #f8f9fa;
-                padding: 20px 30px;
-                text-align: center;
-                color: #666;
-                border-top: 1px solid #ddd;
-            }}
+            :root {
+                --bg: #0f172a;
+                --side: #1e293b;
+                --card: #1e293b;
+                --accent: #38bdf8;
+                --border: rgba(255, 255, 255, 0.1);
+                --text: #ffffff;
+                --text-dim: #94a3b8;
+            }
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body { font-family: 'Poppins', sans-serif; background: var(--bg); color: var(--text); display: flex; height: 100vh; overflow: hidden; }
+            
+            .sidebar { width: 250px; background: var(--side); border-right: 1px solid var(--border); padding: 40px 20px; display: flex; flex-direction: column; }
+            .logo { font-size: 1.2rem; font-weight: 700; color: #fff; margin-bottom: 40px; line-height: 1.4; }
+            .nav-btn { padding: 12px 15px; color: var(--text-dim); text-decoration: none; font-size: 0.85rem; border-radius: 10px; margin-bottom: 5px; cursor: pointer; }
+            .nav-btn:hover, .nav-btn.active { background: rgba(255,255,255,0.05); color: var(--accent); }
+
+            .main-content { flex: 1; padding: 40px; overflow-y: auto; scroll-behavior: smooth; }
+            
+            .kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 40px; }
+            .kpi-card { background: var(--card); border: 1px solid var(--border); padding: 20px; border-radius: 15px; }
+            .kpi-title { font-size: 0.65rem; color: var(--text-dim); text-transform: uppercase; margin-bottom: 5px; letter-spacing: 1px; }
+            .kpi-val { font-size: 1.3rem; font-weight: 600; }
+
+            .grid-2 { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; margin-bottom: 20px; }
+            .card { background: var(--card); border: 1px solid var(--border); border-radius: 20px; padding: 25px; }
+            .card-header { font-size: 0.95rem; font-weight: 600; margin-bottom: 20px; color: #fff; border-left: 3px solid var(--accent); padding-left: 12px; }
+
+            .controls { display: flex; gap: 10px; margin-bottom: 15px; }
+            input, select { 
+                background: #0f172a; 
+                border: 1px solid var(--border); 
+                color: #fff; 
+                padding: 10px 15px; 
+                border-radius: 10px; 
+                font-family: inherit; 
+                font-size: 0.8rem; 
+                outline: none;
+                height: 40px;
+            }
+            select option { background: #1e293b; color: #fff; }
+            input { flex: 1; }
+
+            .chart-area { width: 100%; height: 400px; position: relative; }
+            
+            table { width: 100%; border-collapse: collapse; }
+            th { text-align: left; padding: 12px; font-size: 0.7rem; color: var(--text-dim); text-transform: uppercase; border-bottom: 1px solid var(--border); }
+            td { padding: 12px; font-size: 0.8rem; border-bottom: 1px solid var(--border); }
+            
+            .page-row { display: flex; justify-content: flex-end; gap: 10px; margin-top: 15px; padding-bottom: 40px; }
+            .btn { padding: 5px 15px; background: #0f172a; border: 1px solid var(--border); color: #fff; border-radius: 8px; cursor: pointer; font-size: 0.75rem; }
+            .btn:disabled { opacity: 0.3; }
+
+            .tooltip { position: absolute; padding: 10px; background: rgba(0,0,0,0.9); border: 1px solid var(--accent); border-radius: 8px; font-size: 0.75rem; pointer-events: none; z-index: 1000; }
         </style>
     </head>
     <body>
-        <div class="container">
-            <div class="header">
-                <h1>🌍 Tourism Expenditure Clustering Dashboard</h1>
-                <p>K-Means Analysis of Kaggle Tourism Dataset</p>
-            </div>
-            <div class="content">
-                <div class="section">
-                    <h2>📊 Key Statistics</h2>
-                    <div class="stats-grid">
-                        <div class="stat-card">
-                            <h3>{len(clustered_countries)}</h3>
-                            <p>Countries Analyzed</p>
-                        </div>
-                        <div class="stat-card">
-                            <h3>{len(cluster_summary)}</h3>
-                            <p>Clusters Identified</p>
-                        </div>
-                        <div class="stat-card">
-                            <h3>{max(scores, key=lambda x: x['silhouette'])['k']}</h3>
-                            <p>Optimal Cluster Count</p>
-                        </div>
-                        <div class="stat-card">
-                            <h3>{max(scores, key=lambda x: x['silhouette'])['silhouette']:.3f}</h3>
-                            <p>Best Silhouette Score</p>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="section">
-                    <h2>📈 Cluster Analysis</h2>
-                    <div class="grid">
-                        <div class="plot-container">
-                            <img src="data:image/png;base64,{elbow_b64}" alt="Elbow Method Plot">
-                        </div>
-                        <div class="plot-container">
-                            <img src="data:image/png;base64,{scatter_b64}" alt="Cluster Visualization">
-                        </div>
-                    </div>
-                </div>
-
-                <div class="section">
-                    <h2>📋 Cluster Summary</h2>
-                    <div class="table-container">
-                        {summary_html}
-                    </div>
-                </div>
-
-                <div class="section">
-                    <h2>🌐 Sample Countries by Cluster (First 20)</h2>
-                    <div class="table-container">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Country</th>
-                                    <th>Cluster</th>
-                                    <th>Avg Expenditure</th>
-                                    <th>Growth Rate</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {details_rows}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-            <div class="footer">
-                <p>Generated by Tourism Clustering Analysis | K-Means Clustering Algorithm</p>
-            </div>
+        <div class="sidebar">
+            <div class="logo">Tourism Data Clustering and Revenue Analysis </div>
+            <a href="#summary" class="nav-btn active">Analysis Summary</a>
+            <a href="#visuals" class="nav-btn">K-Means Visualization</a>
+            <a href="#registry" class="nav-btn">Data Registry</a>
         </div>
+
+        <main class="main-content">
+            <div id="summary" class="kpi-row">
+                <div class="kpi-card"><div class="kpi-title">Data Points (Count)</div><div class="kpi-val">%%COUNT%%</div></div>
+                <div class="kpi-card"><div class="kpi-title">Total Tourism Receipts</div><div class="kpi-val">$%%RECEIPTS%%T</div></div>
+                <div class="kpi-card"><div class="kpi-title">Average Yield</div><div class="kpi-val">$%%EFFICIENCY%%</div></div>
+                <div class="kpi-card"><div class="kpi-title">Silhouette Score</div><div class="kpi-val">%%SILHOUETTE%%</div></div>
+            </div>
+
+            <div id="visuals" class="grid-2">
+                <div class="card">
+                    <div class="card-header">K-Means Clustering: Arrivals vs Revenue</div>
+                    <div class="controls">
+                        <input type="text" id="search" placeholder="Search by Country Name...">
+                        <select id="pick"><option value="">Select Entity...</option></select>
+                    </div>
+                    <div id="main-scatter" class="chart-area"></div>
+                </div>
+                <div class="card">
+                    <div class="card-header">Cluster Membership Share</div>
+                    <div id="donut" class="chart-area" style="height: 250px;"></div>
+                    <div id="group-labels" style="margin-top: 20px;"></div>
+                </div>
+            </div>
+
+            <div class="grid-2" style="grid-template-columns: 1fr 1fr;">
+                <div class="card">
+                    <div class="card-header">K-Selection: Elbow Method</div>
+                    <div id="elbow" class="chart-area" style="height: 350px;"></div>
+                </div>
+                <div class="card">
+                    <div class="card-header">Cluster Centroid Statistics</div>
+                    <table>
+                        <thead><tr><th>Cluster Group</th><th>Avg Receipts</th><th>Avg Yield</th></tr></thead>
+                        <tbody id="avg-table"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="registry" class="card">
+                <div class="card-header">Global Tourism Data Registry</div>
+                <div style="overflow-x: auto; border: 1px solid var(--border); border-radius: 10px;">
+                    <table>
+                        <thead><tr><th>Country</th><th>Cluster</th><th>Receipts</th><th>Arrivals</th><th>Yield</th></tr></thead>
+                        <tbody id="main-table"></tbody>
+                    </table>
+                </div>
+                <div class="page-row">
+                    <button class="btn" id="p">Previous Page</button>
+                    <button class="btn" id="n">Next Page</button>
+                </div>
+            </div>
+        </main>
+
+        <div id="tooltip" class="tooltip" style="opacity:0"></div>
+
+        <script>
+            const data = %%DATA_JSON%%;
+            const colors = ["#38bdf8", "#818cf8", "#fb7185", "#34d399"];
+            const labels = ["Cluster 0: Global Leaders", "Cluster 1: Volume Markets", "Cluster 2: Premium Hubs", "Cluster 3: Emerging Markets"];
+            const tt = d3.select("#tooltip");
+            function fmt(v) { return d3.format(".2s")(v).replace('G', 'B'); }
+
+            let dots;
+
+            function drawScatter() {
+                const con = d3.select("#main-scatter"); con.html("");
+                const m = {top: 10, right: 10, bottom: 40, left: 60}, w = con.node().clientWidth - m.left - m.right, h = 400 - m.top - m.bottom;
+                const svg = con.append("svg").attr("width", w+m.left+m.right).attr("height", h+m.top+m.bottom).append("g").attr("transform", `translate(${m.left},${m.top})`);
+                const x = d3.scaleLog().domain([d3.min(data.countries, d => d.arrivals)*0.8, d3.max(data.countries, d => d.arrivals)*1.2]).range([0, w]);
+                const y = d3.scaleLog().domain([d3.min(data.countries, d => d.receipts)*0.8, d3.max(data.countries, d => d.receipts)*1.2]).range([h, 0]);
+                const r = d3.scaleSqrt().domain(d3.extent(data.countries, d => d.gdp)).range([5, 25]);
+                svg.append("g").attr("transform", `translate(0,${h})`).call(d3.axisBottom(x).ticks(5, "~s")).attr("color", "#4b5563");
+                svg.append("g").call(d3.axisLeft(y).ticks(5, "$~s")).attr("color", "#4b5563");
+                dots = svg.selectAll("circle").data(data.countries).enter().append("circle")
+                    .attr("cx", d => x(d.arrivals)).attr("cy", d => y(d.receipts)).attr("r", d => r(d.gdp))
+                    .attr("fill", d => colors[d.cluster]).attr("opacity", 0.7).attr("stroke", "#fff")
+                    .on("mouseover", (e, d) => {
+                        tt.style("opacity", 1).html(`<b>${d.name}</b><br>Cluster: ${d.cluster}`).style("left",(e.pageX+10)+"px").style("top",(e.pageY-10)+"px");
+                    }).on("mouseout", () => tt.style("opacity", 0));
+            }
+
+            function drawDonut() {
+                const con = d3.select("#donut"); con.html("");
+                const w = con.node().clientWidth, h = 250, rad = 90;
+                const svg = con.append("svg").attr("width", w).attr("height", h).append("g").attr("transform", `translate(${w/2},${h/2})`);
+                const pie = d3.pie().value(d => d.countries);
+                const arc = d3.arc().innerRadius(60).outerRadius(rad);
+                svg.selectAll("path").data(pie(data.summary)).enter().append("path").attr("d", arc).attr("fill", (d,i) => colors[i]).attr("stroke", "#1e293b").attr("stroke-width", 2);
+            }
+
+            function drawElbow() {
+                const con = d3.select("#elbow"); con.html("");
+                const m = {top: 10, right: 10, bottom: 40, left: 60}, w = con.node().clientWidth - m.left - m.right, h = 350 - m.top - m.bottom;
+                const svg = con.append("svg").attr("width", w+m.left+m.right).attr("height", h+m.top+m.bottom).append("g").attr("transform", `translate(${m.left},${m.top})`);
+                const x = d3.scaleLinear().domain([1, data.elbow.length]).range([0, w]);
+                const y = d3.scaleLinear().domain([0, d3.max(data.elbow, d => d.inertia)]).range([h, 0]);
+                svg.append("g").attr("transform", `translate(0,${h})`).call(d3.axisBottom(x));
+                svg.append("g").call(d3.axisLeft(y).ticks(5, ".1e"));
+                svg.append("path").datum(data.elbow).attr("fill","none").attr("stroke", "#38bdf8").attr("stroke-width",2).attr("d", d3.line().x(d => x(d.k)).y(d => y(d.inertia)));
+                svg.selectAll("circle").data(data.elbow).enter().append("circle").attr("cx", d => x(d.k)).attr("cy", d => y(d.inertia)).attr("r", 5).attr("fill", "#38bdf8");
+            }
+
+            // Controls
+            const sel = d3.select("#pick");
+            data.countries.sort((a,b) => a.name.localeCompare(b.name)).forEach(c => sel.append("option").attr("value", c.name).text(c.name));
+            sel.on("change", function() {
+                const val = this.value;
+                dots.transition().duration(500).attr("opacity", d => (val==="" || d.name===val) ? 0.8 : 0.1).attr("r", d => d.name===val ? 30 : 10);
+            });
+            d3.select("#search").on("input", function() {
+                const val = this.value.toLowerCase();
+                dots.attr("opacity", d => d.name.toLowerCase().includes(val) ? 0.8 : 0.1);
+            });
+
+            // Table
+            let page = 0;
+            function drawTable() {
+                const s = page * 10, e = s + 10, pData = data.countries.slice(s, e);
+                const b = d3.select("#main-table"); b.html("");
+                pData.forEach(c => {
+                    const tr = b.append("tr");
+                    tr.append("td").text(c.name);
+                    tr.append("td").style("color", colors[c.cluster]).text("Cluster " + c.cluster);
+                    tr.append("td").text("$"+fmt(c.receipts));
+                    tr.append("td").text(fmt(c.arrivals));
+                    tr.append("td").text("$"+Math.round(c.efficiency));
+                });
+            }
+            d3.select("#n").on("click", () => { page++; drawTable(); });
+            d3.select("#p").on("click", () => { page = Math.max(0, page-1); drawTable(); });
+
+            data.summary.forEach((s, i) => {
+                const tr = d3.select("#avg-table").append("tr");
+                tr.append("td").style("color", colors[i]).style("font-weight", "600").text(labels[i]);
+                tr.append("td").text("$"+fmt(s.receipts));
+                tr.append("td").text("$"+Math.round(s.avg_spending_efficiency));
+                
+                const d = d3.select("#group-labels").append("div").style("display","flex").style("justify-content","space-between").style("padding","6px 0").style("border-bottom","1px solid rgba(255,255,255,0.05)");
+                d.append("div").html("<span style='color:"+colors[i]+"'>●</span> " + labels[i]);
+                d.append("div").style("color", "#9ca3af").text(s.countries + " items");
+            });
+
+            drawScatter(); drawDonut(); drawElbow(); drawTable();
+        </script>
     </body>
     </html>
     """
-
+    
+    # Placeholders
+    html = html_template.replace("%%DATA_JSON%%", data_json)
+    html = html.replace("%%COUNT%%", str(stats['count']))
+    html = html.replace("%%RECEIPTS%%", f"{stats['total_receipts']/1e12:.2f}")
+    html = html.replace("%%EFFICIENCY%%", f"{stats['avg_efficiency']:.0f}")
+    html = html.replace("%%SILHOUETTE%%", f"{stats['silhouette']:.2f}")
+    
     with open(DASHBOARD_PATH, "w", encoding="utf-8") as f:
-        f.write(html_content)
+        f.write(html)
+    logger.info(f"DAV Optimized Dashboard generated at {DASHBOARD_PATH}")
 
-
-def main() -> None:
-    raw_data = load_data()
-    country_features = build_country_features(raw_data)
-    features, feature_names = prepare_features(country_features)
-
-    scores = find_best_k(features, min_k=2, max_k=min(6, len(country_features) - 1))
-    best_k = max(scores, key=lambda item: item["silhouette"])["k"]
-    best_k = int(best_k)
-
-    model, labels = fit_clusters(features, n_clusters=best_k)
-
-    clustered_countries = country_features.copy()
-    clustered_countries["cluster"] = labels
-
-    cluster_summary = build_cluster_summary(clustered_countries)
-
-    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    clustered_countries.to_csv(OUTPUT_PATH, index=False)
-    cluster_summary.to_csv(SUMMARY_PATH, index=False)
-
-    save_elbow_plot(scores)
-    save_cluster_plot(features, labels, model.cluster_centers_)
-    generate_html_dashboard(cluster_summary, clustered_countries, scores)
-
-    print("Tourism Expenditure Clustering and Revenue Analysis")
-    print("=" * 50)
-    print("Elbow and silhouette scores:")
-    for score in scores:
-        print(
-            f"k={score['k']} | inertia={score['inertia']:.2f} | silhouette={score['silhouette']:.3f}"
-        )
-
-    print(f"\nSelected clusters: {best_k}")
-    print("\nCluster Summary:")
-    print(cluster_summary.to_string(index=False))
-
-    print("\nCluster centroids in scaled feature space:")
-    centroids = pd.DataFrame(model.cluster_centers_, columns=feature_names)
-    print(centroids.round(3).to_string(index=False))
-
-    print(f"\nClustered dataset saved to: {OUTPUT_PATH}")
-    print(f"Cluster summary saved to: {SUMMARY_PATH}")
-    print(f"Elbow plot saved to: {ELBOW_PLOT_PATH}")
-    print(f"Cluster plot saved to: {CLUSTER_PLOT_PATH}")
-    print(f"Dashboard saved to: {DASHBOARD_PATH}")
-    print(f"\n✨ Open {DASHBOARD_PATH} in your browser to view the interactive dashboard!")
-
+def main():
+    try:
+        df = load_and_clean_data()
+        feature_df = build_features(df)
+        scaler = StandardScaler()
+        cols = ["receipts", "arrivals", "efficiency", "dependency", "gdp"]
+        scaled = scaler.fit_transform(feature_df[cols])
+        
+        elbow_data = []
+        for i in range(1, 8):
+            km = KMeans(n_clusters=i, random_state=42, n_init=10)
+            km.fit(scaled)
+            elbow_data.append({"k": i, "inertia": float(km.inertia_)})
+            
+        k = 4
+        kmeans = KMeans(n_clusters=k, random_state=42, n_init=10)
+        feature_df["cluster"] = kmeans.fit_predict(scaled)
+        
+        summary = feature_df.groupby("cluster").agg({
+            "name": "count", "receipts": "mean", "arrivals": "mean", "efficiency": "mean"
+        }).rename(columns={"name": "countries", "efficiency": "avg_spending_efficiency"}).reset_index()
+        
+        stats = {
+            "count": len(feature_df),
+            "total_receipts": feature_df["receipts"].sum(),
+            "k": k,
+            "avg_efficiency": feature_df["efficiency"].mean(),
+            "silhouette": float(silhouette_score(scaled, feature_df["cluster"]))
+        }
+        
+        OUTPUT_DIR.mkdir(exist_ok=True)
+        generate_dashboard(feature_df, summary, elbow_data, stats)
+        print(f"DONE: DAV Optimized Project Dashboard at {DASHBOARD_PATH}")
+    except Exception as e:
+        logger.error(f"Error: {e}")
 
 if __name__ == "__main__":
     main()
