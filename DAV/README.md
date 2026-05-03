@@ -15,24 +15,27 @@ This DAV mini-project analyzes the Kaggle tourism dataset using K-Means clusteri
 - `kaggle_tourism_preview.py` - KaggleHub loader example for the public tourism dataset
 - `requirements.txt` - Python dependencies
 
-## How to Run
+## 🚀 How to Run the Project 
 
-1. Install dependencies:
+To run this project on your computer, follow these simple steps:
 
+### 1. Install Dependencies
+Open your terminal (Command Prompt or PowerShell) in the project folder and run:
 ```bash
 pip install -r requirements.txt
 ```
 
-2. Run the analysis:
-
+### 2. Run the Analysis
+Execute the main script to process the data and generate the visualization:
 ```bash
 python tourism_kmeans.py
 ```
 
-The script downloads the Kaggle tourism dataset, clusters countries by expenditure trends, and saves the clustered dataset to `output/country_clustered.csv`.
-It also saves a cluster summary table and two plots in the `output/` folder.
+### 3. View the Results
+Once the script finishes, a new file will be created (or updated) in the `output/` folder.
+- Open **`output/dashboard.html`** in any web browser (Chrome, Edge, or Firefox) to see the interactive charts, K-Means groups, and the Elbow Plot.
 
-## KaggleHub Preview
+## 📊 Project Content
 
 If you want to inspect the public Kaggle dataset `imtkaggleteam/tourism`, run:
 
