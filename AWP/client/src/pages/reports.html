@@ -7,23 +7,48 @@
     </span>
   </div>
 
-  <div class="grid md:grid-cols-2 gap-4">
+  <div ng-if="loading" class="card p-4 space-y-3">
+    <div class="h-3 skeleton w-full"></div>
+    <div class="h-3 skeleton w-4/5"></div>
+    <div class="h-3 skeleton w-3/5"></div>
+  </div>
 
+  <div ng-if="!loading" class="grid md:grid-cols-3 gap-4">
     <div class="card p-5">
-      <div class="flex items-center gap-2 mb-4">
-        <i data-lucide="bar-chart-2" style="color:var(--accent);width:15px;height:15px"></i>
-        <p class="text-xs font-semibold uppercase tracking-widest" style="color:var(--muted)">Uploads by Day</p>
+      <p class="text-xs font-semibold uppercase tracking-widest" style="color:var(--muted)">Total Uploads</p>
+      <p class="mt-2 text-2xl font-bold" style="color:var(--text)">{{summary.totalUploads}}</p>
+    </div>
+    <div class="card p-5">
+      <p class="text-xs font-semibold uppercase tracking-widest" style="color:var(--muted)">Active Days</p>
+      <p class="mt-2 text-2xl font-bold" style="color:var(--text)">{{summary.activeDays}}</p>
+    </div>
+    <div class="card p-5">
+      <p class="text-xs font-semibold uppercase tracking-widest" style="color:var(--muted)">Distinct Tags</p>
+      <p class="mt-2 text-2xl font-bold" style="color:var(--text)">{{summary.distinctTags}}</p>
+    </div>
+  </div>
+
+  <div ng-if="!loading" class="grid md:grid-cols-2 gap-4">
+    <div class="card p-4">
+      <p class="text-xs font-semibold uppercase tracking-widest mb-3" style="color:var(--muted)">Uploads by Day</p>
+      <div class="space-y-2 max-h-72 overflow-auto">
+        <div ng-repeat="u in uploadsByDay track by u.day" class="flex items-center justify-between text-sm">
+          <span style="color:var(--text-2)">{{u.day}}</span>
+          <span class="badge badge-blue">{{u.count}}</span>
+        </div>
+        <p ng-if="!uploadsByDay.length" class="text-xs" style="color:var(--muted)">No upload activity found.</p>
       </div>
-      <canvas id="reportsUploadsChart" height="160"></canvas>
     </div>
 
-    <div class="card p-5">
-      <div class="flex items-center gap-2 mb-4">
-        <i data-lucide="pie-chart" style="color:var(--accent);width:15px;height:15px"></i>
-        <p class="text-xs font-semibold uppercase tracking-widest" style="color:var(--muted)">Tags Breakdown</p>
+    <div class="card p-4">
+      <p class="text-xs font-semibold uppercase tracking-widest mb-3" style="color:var(--muted)">Tags Breakdown</p>
+      <div class="space-y-2 max-h-72 overflow-auto">
+        <div ng-repeat="t in tagsBreakdown track by t.tag" class="flex items-center justify-between text-sm">
+          <span style="color:var(--text-2)">{{t.tag}}</span>
+          <span class="badge badge-blue">{{t.count}}</span>
+        </div>
+        <p ng-if="!tagsBreakdown.length" class="text-xs" style="color:var(--muted)">No tags found.</p>
       </div>
-      <canvas id="reportsTagsChart" height="160"></canvas>
     </div>
-
   </div>
 </div>
