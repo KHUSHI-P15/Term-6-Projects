@@ -206,6 +206,21 @@ def generate_dashboard(df: pd.DataFrame, summary: pd.DataFrame, elbow: list, sta
                 const r = d3.scaleSqrt().domain(d3.extent(data.countries, d => d.gdp)).range([5, 25]);
                 svg.append("g").attr("transform", `translate(0,${h})`).call(d3.axisBottom(x).ticks(5, "~s")).attr("color", "#4b5563");
                 svg.append("g").call(d3.axisLeft(y).ticks(5, "$~s")).attr("color", "#4b5563");
+                svg.append("text")
+                    .attr("x", w / 2)
+                    .attr("y", h + 34)
+                    .attr("text-anchor", "middle")
+                    .attr("fill", "#94a3b8")
+                    .attr("font-size", 12)
+                    .text("Tourist Arrivals");
+                svg.append("text")
+                    .attr("transform", "rotate(-90)")
+                    .attr("x", -h / 2)
+                    .attr("y", -42)
+                    .attr("text-anchor", "middle")
+                    .attr("fill", "#94a3b8")
+                    .attr("font-size", 12)
+                    .text("Tourism Receipts");
                 dots = svg.selectAll("circle").data(data.countries).enter().append("circle")
                     .attr("cx", d => x(d.arrivals)).attr("cy", d => y(d.receipts)).attr("r", d => r(d.gdp))
                     .attr("fill", d => colors[d.cluster]).attr("opacity", 0.7).attr("stroke", "#fff")
@@ -231,8 +246,30 @@ def generate_dashboard(df: pd.DataFrame, summary: pd.DataFrame, elbow: list, sta
                 const y = d3.scaleLinear().domain([0, d3.max(data.elbow, d => d.inertia)]).range([h, 0]);
                 svg.append("g").attr("transform", `translate(0,${h})`).call(d3.axisBottom(x));
                 svg.append("g").call(d3.axisLeft(y).ticks(5, ".1e"));
+                svg.append("text")
+                    .attr("x", w / 2)
+                    .attr("y", h + 34)
+                    .attr("text-anchor", "middle")
+                    .attr("fill", "#94a3b8")
+                    .attr("font-size", 12)
+                    .text("Number of Clusters (K)");
+                svg.append("text")
+                    .attr("transform", "rotate(-90)")
+                    .attr("x", -h / 2)
+                    .attr("y", -42)
+                    .attr("text-anchor", "middle")
+                    .attr("fill", "#94a3b8")
+                    .attr("font-size", 12)
+                    .text("Inertia");
                 svg.append("path").datum(data.elbow).attr("fill","none").attr("stroke", "#38bdf8").attr("stroke-width",2).attr("d", d3.line().x(d => x(d.k)).y(d => y(d.inertia)));
-                svg.selectAll("circle").data(data.elbow).enter().append("circle").attr("cx", d => x(d.k)).attr("cy", d => y(d.inertia)).attr("r", 5).attr("fill", "#38bdf8");
+                svg.selectAll("circle").data(data.elbow).enter().append("circle").attr("cx", d => x(d.k)).attr("cy", d => y(d.inertia)).attr("r", 5).attr("fill", "#38bdf8")
+                    .on("mouseover", (e, d) => {
+                        tt.style("opacity", 1)
+                            .html(`<b>K = ${d.k}</b><br>Inertia: ${d3.format(".3s")(d.inertia).replace('G', 'B')}`)
+                            .style("left", (e.pageX + 10) + "px")
+                            .style("top", (e.pageY - 10) + "px");
+                    })
+                    .on("mouseout", () => tt.style("opacity", 0));
             }
 
             // Controls
